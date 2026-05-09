@@ -429,10 +429,13 @@ function abrirPDF(){
     .replace(/__LOGO__/g, LOGO_B64)
     .replace(/__PLANTA__/g, PLANTA_B64)
     .replace(/__AXONO__/g, AXONO_B64);
-  const w = window.open('', '_blank');
-  w.document.open();
-  w.document.write(doc);
-  w.document.close();
+  const blob = new Blob([doc], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 renderCompInputs();
