@@ -1,11 +1,13 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
+// Counter
 const COUNTER_FILE = './counter.json';
 function getCounter() {
   try { return JSON.parse(fs.readFileSync(COUNTER_FILE)); }
@@ -19,10 +21,9 @@ app.post('/api/counter/increment', (req, res) => {
   const c = getCounter(); c.value += 1; saveCounter(c.value); res.json(c);
 });
 
+// PDF generation via PDFShift
 app.post('/api/pdf', async (req, res) => {
-  let browser;
   try {
-    const puppeteer = require('puppeteer');
     const { state, filename } = req.body;
 
     const logoB64 = fs.readFileSync(path.join(__dirname, 'public/img/logo.jpg')).toString('base64');
@@ -32,15 +33,43 @@ app.post('/api/pdf', async (req, res) => {
     const logoSrc = `data:image/jpeg;base64,${logoB64}`;
     const plantaSrc = `data:image/jpeg;base64,${plantaB64}`;
     const axonoSrc = `data:image/jpeg;base64,${axonoB64}`;
+
     const D = state;
 
-    const wm = `<svg viewBox="0 0 794 1123" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="WP" x="0" y="0" width="240" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-22)"><image href="${logoSrc}" x="8" y="8" width="120" height="37" opacity="1"/><image href="${logoSrc}" x="128" y="68" width="120" height="37" opacity="1"/></pattern></defs><rect width="794" height="1123" fill="url(#WP)" opacity="0.07"/></svg>`;
-    const compRows = D.comp_rows.map((c,i) => `<tr><td>${i+1}</td><td>${c.nombre}</td><td>${c.unidad}</td><td style="text-align:right">${c.cant}</td><td style="text-align:right">${c.pu}</td><td style="text-align:right">${c.imp}</td></tr>`).join('');
-    const hdr = `<div class="hdr"><img src="${logoSrc}" alt="Waller"><div class="hdr-meta"><div class="hdr-folio">${D.folio}</div><div class="hdr-fecha">${D.fecha}</div></div></div>`;
-    const ftr = `<div class="ftr"><span>Calle Jose Maria Vigil 2808 Int 6, Col. Providencia</span><span>waller.mx | @waller.mx</span><span>Oficina (33) 23 0303 5363</span></div>`;
+    const wm = `<svg viewBox="0 0 794 1123" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs><pattern id="WP" x="0" y="0" width="240" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-22)">
+        <image href="${logoSrc}" x="8" y="8" width="120" height="37" opacity="1"/>
+        <image href="${logoSrc}" x="128" y="68" width="120" height="37" opacity="1"/>
+      </pattern></defs>
+      <rect width="794" height="1123" fill="url(#WP)" opacity="0.07"/>
+    </svg>`;
+
+    const compRows = D.comp_rows.map((c, i) =>
+      `<tr><td>${i+1}</td><td>${c.nombre}</td><td>${c.unidad}</td><td style="text-align:right">${c.cant}</td><td style="text-align:right">${c.pu}</td><td style="text-align:right">${c.imp}</td></tr>`
+    ).join('');
+
+    const hdr = `<div class="hdr">
+      <img src="${logoSrc}" alt="Waller">
+      <div class="hdr-meta">
+        <div class="hdr-folio">${D.folio}</div>
+        <div class="hdr-fecha">${D.fecha}</div>
+      </div>
+    </div>`;
+
+    const ftr = `<div class="ftr">
+      <span>Calle José María Vigil 2808 Int 6, Col. Providencia</span>
+      <span>waller.mx | @waller.mx</span>
+      <span>Oficina (33) 23 0303 5363</span>
+    </div>`;
+
     const wmDiv = `<div class="wm">${wm}</div>`;
 
-    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>WALLER Cotizacion</title><style>
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>WALLER Cotización</title>
+<style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,sans-serif;background:#fff;color:#222;}
 .page{width:210mm;min-height:297mm;padding:14mm 16mm 12mm;background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;page-break-after:always;}
@@ -77,16 +106,19 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
 .aviso strong{display:block;margin-bottom:3px;color:#aaa;font-size:9px;}
 .ftr{border-top:1px solid #ddd;padding-top:6px;margin-top:auto;display:flex;justify-content:space-between;font-size:8px;color:#aaa;margin-top:8px;}
 @page{size:A4 portrait;margin:0;}
-</style></head><body>
+</style>
+</head>
+<body>
 
-<div class="page">${wmDiv}${hdr}
+<div class="page">
+  ${wmDiv}${hdr}
   <div class="cbar">
     <div><span class="lbl">Cliente</span><span class="val">${D.cliente}</span></div>
     <div><span class="lbl">Proyecto</span><span class="val">${D.proyecto}</span></div>
-    <div><span class="lbl">Ubicacion</span><span class="val">${D.ubicacion}</span></div>
+    <div><span class="lbl">Ubicación</span><span class="val">${D.ubicacion}</span></div>
   </div>
   <p class="intro">Agradecemos la oportunidad para participar en el proyecto <strong>${D.proyecto}</strong>.<br>
-  A continuacion le mostramos una cotizacion con los volumenes totales y precios vigentes para el desarrollo los muros de su proyecto.<br>
+  A continuación le mostramos una cotización con los volúmenes totales y precios vigentes para el desarrollo los muros de su proyecto.<br>
   El equipo de WALLER agradece su confianza en nosotros.</p>
   <div class="slbl">Resumen</div>
   <table>
@@ -95,7 +127,7 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
       <tr><td>Costo total de Panel Waller (Muros + Losas)</td><td>${D.panel_total}</td></tr>
       <tr><td>Costo total de Complementarios</td><td>${D.comp_total}</td></tr>
       <tr><td>Costo total de Fletes</td><td>${D.flete_total}</td></tr>
-      <tr><td>Costo por m2 de materiales (Panel, Complementarios y Fletes)</td><td>${D.m2_costo}</td></tr>
+      <tr><td>Costo por m² de materiales (Panel, Complementarios y Fletes)</td><td>${D.m2_costo}</td></tr>
     </tbody>
     <tfoot>
       <tr><td>Subtotal sin IVA</td><td>${D.subtotal}</td></tr>
@@ -103,10 +135,20 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
       <tr class="tr"><td>IMPORTE TOTAL</td><td>${D.total}</td></tr>
     </tfoot>
   </table>
-  ${ftr}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+    <div>
+      <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Planta de Cubierta</div>
+      <img src="${plantaSrc}" style="width:100%;border:1px solid #ddd;display:block;">
+    </div>
+    <div>
+      <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Vista Axonometrica</div>
+      <img src="${axonoSrc}" style="width:100%;border:1px solid #ddd;display:block;">
+    </div>
+  </div>
 </div>
 
-<div class="page">${wmDiv}${hdr}
+<div class="page">
+  ${wmDiv}${hdr}
   <div class="slbl">Desglose - Muros</div>
   <table>
     <thead><tr><th>Concepto</th><th>m2</th><th>$ x m2</th><th>Importe</th></tr></thead>
@@ -132,7 +174,10 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
   <div class="slbl">Fletes</div>
   <table>
     <thead><tr><th>Concepto</th><th>Viajes</th><th>$ x Viaje</th><th>Importe</th></tr></thead>
-    <tbody><tr><td>Traslado Panel Waller 7.5 cm, Guadalajara planta-obra (96 pzas/viaje). Entrega a pie de calle. NO INCLUYE DESCARGA.</td><td>${D.viajes}</td><td>${D.flete_xv}</td><td>${D.flete_imp}</td></tr></tbody>
+    <tbody><tr>
+      <td>Traslado Panel Waller 7.5 cm, Guadalajara planta-obra (96 pzas/viaje). Entrega a pie de calle. NO INCLUYE DESCARGA.</td>
+      <td>${D.viajes}</td><td>${D.flete_xv}</td><td>${D.flete_imp}</td>
+    </tr></tbody>
     <tfoot>
       <tr><td colspan="3">Subtotal</td><td>${D.flete_sub}</td></tr>
       <tr><td colspan="3">IVA</td><td>${D.flete_iva}</td></tr>
@@ -142,22 +187,8 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
   ${ftr}
 </div>
 
-<div class="page">${wmDiv}${hdr}
-  <div class="slbl">Anexo - Planos del Proyecto</div>
-  <div style="flex:1;display:flex;flex-direction:column;gap:10px;margin-top:6px;">
-    <div style="flex:1;display:flex;flex-direction:column;">
-      <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Planta de Cubierta</div>
-      <img src="${plantaSrc}" style="width:100%;object-fit:contain;border:1px solid #ddd;display:block;">
-    </div>
-    <div style="flex:1.2;display:flex;flex-direction:column;">
-      <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Vista Axonometrica</div>
-      <img src="${axonoSrc}" style="width:100%;object-fit:contain;border:1px solid #ddd;display:block;">
-    </div>
-  </div>
-  ${ftr}
-</div>
-
-<div class="page">${wmDiv}${hdr}
+<div class="page">
+  ${wmDiv}${hdr}
   <div class="notas">
     <strong>Notas</strong>
     - La entrega de los materiales se programara de 3 a 5 dias habiles despues de realizado el pago total.<br>
@@ -167,36 +198,65 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
     - En caso de devaluaciones monetarias o inflaciones mayores al 5%, se realizara un ajuste a los precios.<br>
     - Esta cotizacion es de caracter confidencial y unicamente valida para el destinatario.<br>
     - El precio no incluye los refuerzos de acero necesarios para la ejecucion.<br>
-    - Esta cotizacion es realizada con base en los planos enviados por el cliente.
+    - Esta cotizacion es realizada con base en los planos enviados por el cliente; cualquier cambio en obra sera notificado para ajuste de volumen.
   </div>
   <div class="aviso">
     <strong>Aviso Legal</strong>
-    La informacion contenida en el presente documento tiene caracter exclusivamente tecnico, informativo y referencial. Su aplicacion debera ser evaluada y validada por los responsables tecnicos de cada proyecto.<br><br>
-    Waller no asume responsabilidad alguna por el uso o implementacion de la informacion contenida en este documento.<br><br>
-    Para cualquier aplicacion definitiva, debera realizarse una revision por parte de profesionales competentes y autorizados.
+    La informacion contenida en el presente documento tiene caracter exclusivamente tecnico, informativo y referencial, y se proporciona como guia general con base en la experiencia y criterios tecnicos de Waller prefabricados de concreto S.A. de C.V. e Instaladora de muros prefabricados S.A. de C.V. Su aplicacion debera ser evaluada y validada por los responsables tecnicos, estructurales y de ejecucion de cada proyecto.<br><br>
+    En consecuencia, las recomendaciones aqui contenidas podran ser adaptadas, modificadas o complementadas conforme al criterio tecnico correspondiente y no constituyen una instruccion obligatoria ni garantizan resultados especificos. Waller no asume responsabilidad alguna por el uso, interpretacion, adaptacion o implementacion de la informacion contenida en este documento.<br><br>
+    Para cualquier aplicacion definitiva, debera realizarse una revision y validacion especifica por parte de profesionales competentes y autorizados.
   </div>
   ${ftr}
 </div>
 
-</body></html>`;
+</body>
+</html>`;
 
-    browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    // Call PDFShift API
+    const pdfshiftData = JSON.stringify({
+      source: html,
+      landscape: false,
+      use_print: true
     });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 } });
-    await browser.close();
+
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.pdfshift.io',
+        path: '/v3/convert/pdf',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + Buffer.from('api:sk_44a6758f06645393660909ca2d15f5e6943fed3b').toString('base64'),
+          'Content-Length': Buffer.byteLength(pdfshiftData)
+        }
+      };
+
+      const request = https.request(options, (response) => {
+        const chunks = [];
+        response.on('data', chunk => chunks.push(chunk));
+        response.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          if (response.statusCode === 200) {
+            resolve(buffer);
+          } else {
+            reject(new Error(`PDFShift error ${response.statusCode}: ${buffer.toString()}`));
+          }
+        });
+      });
+
+      request.on('error', reject);
+      request.write(pdfshiftData);
+      request.end();
+    });
 
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename || 'cotizacion'}.pdf"`,
-      'Content-Length': pdf.length
+      'Content-Length': pdfBuffer.length
     });
-    res.send(pdf);
+    res.send(pdfBuffer);
 
   } catch (err) {
-    if (browser) await browser.close().catch(() => {});
     console.error('PDF error:', err.message);
     res.status(500).json({ error: err.message });
   }
