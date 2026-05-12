@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
@@ -20,14 +21,11 @@ app.post('/api/counter/increment', (req, res) => {
   const c = getCounter(); c.value += 1; saveCounter(c.value); res.json(c);
 });
 
-// PDF generation
+// PDF generation via PDFShift
 app.post('/api/pdf', async (req, res) => {
-  let browser;
   try {
-    const puppeteer = require('puppeteer');
     const { state, filename } = req.body;
 
-    // Read images as base64
     const logoB64 = fs.readFileSync(path.join(__dirname, 'public/img/logo.jpg')).toString('base64');
     const plantaB64 = fs.readFileSync(path.join(__dirname, 'public/img/planta.jpg')).toString('base64');
     const axonoB64 = fs.readFileSync(path.join(__dirname, 'public/img/axono.jpg')).toString('base64');
@@ -38,7 +36,6 @@ app.post('/api/pdf', async (req, res) => {
 
     const D = state;
 
-    // Build watermark pattern
     const wm = `<svg viewBox="0 0 794 1123" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs><pattern id="WP" x="0" y="0" width="240" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-22)">
         <image href="${logoSrc}" x="8" y="8" width="120" height="37" opacity="1"/>
@@ -51,25 +48,21 @@ app.post('/api/pdf', async (req, res) => {
       `<tr><td>${i+1}</td><td>${c.nombre}</td><td>${c.unidad}</td><td style="text-align:right">${c.cant}</td><td style="text-align:right">${c.pu}</td><td style="text-align:right">${c.imp}</td></tr>`
     ).join('');
 
-    function hdr() {
-      return `<div class="hdr">
-        <img src="${logoSrc}" alt="Waller">
-        <div class="hdr-meta">
-          <div class="hdr-folio">${D.folio}</div>
-          <div class="hdr-fecha">${D.fecha}</div>
-        </div>
-      </div>`;
-    }
-    function ftr() {
-      return `<div class="ftr">
-        <span>Calle José María Vigil 2808 Int 6, Col. Providencia</span>
-        <span>waller.mx | @waller.mx</span>
-        <span>Oficina (33) 23 0303 5363</span>
-      </div>`;
-    }
-    function wmDiv() {
-      return `<div class="wm">${wm}</div>`;
-    }
+    const hdr = `<div class="hdr">
+      <img src="${logoSrc}" alt="Waller">
+      <div class="hdr-meta">
+        <div class="hdr-folio">${D.folio}</div>
+        <div class="hdr-fecha">${D.fecha}</div>
+      </div>
+    </div>`;
+
+    const ftr = `<div class="ftr">
+      <span>Calle José María Vigil 2808 Int 6, Col. Providencia</span>
+      <span>waller.mx | @waller.mx</span>
+      <span>Oficina (33) 23 0303 5363</span>
+    </div>`;
+
+    const wmDiv = `<div class="wm">${wm}</div>`;
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -118,8 +111,7 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
 <body>
 
 <div class="page">
-  ${wmDiv()}
-  ${hdr()}
+  ${wmDiv}${hdr}
   <div class="cbar">
     <div><span class="lbl">Cliente</span><span class="val">${D.cliente}</span></div>
     <div><span class="lbl">Proyecto</span><span class="val">${D.proyecto}</span></div>
@@ -143,23 +135,22 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
       <tr class="tr"><td>IMPORTE TOTAL</td><td>${D.total}</td></tr>
     </tfoot>
   </table>
-  ${ftr()}
+  ${ftr}
 </div>
 
 <div class="page">
-  ${wmDiv()}
-  ${hdr()}
-  <div class="slbl">Desglose – Muros</div>
+  ${wmDiv}${hdr}
+  <div class="slbl">Desglose - Muros</div>
   <table>
-    <thead><tr><th>Concepto</th><th>m²</th><th>$ x m²</th><th>Importe</th></tr></thead>
-    <tbody><tr><td>Panel Waller de 7.5 cm de espesor (0.61 × 2.44 m)</td><td>${D.muros_m2}</td><td>${D.muros_pm2}</td><td>${D.muros_imp}</td></tr></tbody>
-    <tfoot><tr><td colspan="3"><strong>Total m² con Desperdicio: ${D.muros_m2}</strong></td><td></td></tr></tfoot>
+    <thead><tr><th>Concepto</th><th>m2</th><th>$ x m2</th><th>Importe</th></tr></thead>
+    <tbody><tr><td>Panel Waller de 7.5 cm de espesor (0.61 x 2.44 m)</td><td>${D.muros_m2}</td><td>${D.muros_pm2}</td><td>${D.muros_imp}</td></tr></tbody>
+    <tfoot><tr><td colspan="3"><strong>Total m2 con Desperdicio: ${D.muros_m2}</strong></td><td></td></tr></tfoot>
   </table>
-  <div class="slbl">Desglose – Losas</div>
+  <div class="slbl">Desglose - Losas</div>
   <table>
-    <thead><tr><th>Concepto</th><th>m²</th><th>$ x m²</th><th>Importe</th></tr></thead>
-    <tbody><tr><td>Panel Waller de 7.5 cm de espesor (0.61 × 2.44 m)</td><td>${D.losas_m2}</td><td>${D.losas_pm2}</td><td>${D.losas_imp}</td></tr></tbody>
-    <tfoot><tr><td colspan="3"><strong>Total m² con Desperdicio: ${D.losas_m2}</strong></td><td></td></tr></tfoot>
+    <thead><tr><th>Concepto</th><th>m2</th><th>$ x m2</th><th>Importe</th></tr></thead>
+    <tbody><tr><td>Panel Waller de 7.5 cm de espesor (0.61 x 2.44 m)</td><td>${D.losas_m2}</td><td>${D.losas_pm2}</td><td>${D.losas_imp}</td></tr></tbody>
+    <tfoot><tr><td colspan="3"><strong>Total m2 con Desperdicio: ${D.losas_m2}</strong></td><td></td></tr></tfoot>
   </table>
   <div class="slbl">Complementarios</div>
   <table>
@@ -175,7 +166,7 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
   <table>
     <thead><tr><th>Concepto</th><th>Viajes</th><th>$ x Viaje</th><th>Importe</th></tr></thead>
     <tbody><tr>
-      <td>Traslado Panel Waller 7.5 cm, Guadalajara planta–obra (96 pzas/viaje). Entrega a pie de calle. NO INCLUYE DESCARGA.</td>
+      <td>Traslado Panel Waller 7.5 cm, Guadalajara planta-obra (96 pzas/viaje). Entrega a pie de calle. NO INCLUYE DESCARGA.</td>
       <td>${D.viajes}</td><td>${D.flete_xv}</td><td>${D.flete_imp}</td>
     </tr></tbody>
     <tfoot>
@@ -184,73 +175,95 @@ tfoot tr.tr td{background:#0072BC;color:#fff;font-size:12px;font-weight:700;bord
       <tr class="tr"><td colspan="3">Total</td><td>${D.flete_tot}</td></tr>
     </tfoot>
   </table>
-  ${ftr()}
+  ${ftr}
 </div>
 
 <div class="page">
-  ${wmDiv()}
-  ${hdr()}
-  <div class="slbl">Anexo – Planos del Proyecto</div>
+  ${wmDiv}${hdr}
+  <div class="slbl">Anexo - Planos del Proyecto</div>
   <div style="flex:1;display:flex;flex-direction:column;gap:10px;margin-top:6px;">
     <div style="flex:1;display:flex;flex-direction:column;">
       <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Planta de Cubierta</div>
       <img src="${plantaSrc}" style="width:100%;object-fit:contain;border:1px solid #ddd;display:block;">
     </div>
     <div style="flex:1.2;display:flex;flex-direction:column;">
-      <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Vista Axonométrica</div>
+      <div style="font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555;margin-bottom:4px;">Vista Axonometrica</div>
       <img src="${axonoSrc}" style="width:100%;object-fit:contain;border:1px solid #ddd;display:block;">
     </div>
   </div>
-  ${ftr()}
+  ${ftr}
 </div>
 
 <div class="page">
-  ${wmDiv()}
-  ${hdr()}
+  ${wmDiv}${hdr}
   <div class="notas">
     <strong>Notas</strong>
-    • La entrega de los materiales se programará de 3 a 5 días hábiles después de realizado el pago total.<br>
-    • Esta cotización tiene una vigencia de 30 días naturales.<br>
-    • El rendimiento del cálculo de los materiales es con base en la ficha técnica de los mismos.<br>
-    • El costo es en moneda nacional (Pesos Mexicanos).<br>
-    • En caso de devaluaciones monetarias o inflaciones mayores al 5%, se realizará un ajuste a los precios.<br>
-    • Esta cotización es de carácter confidencial y únicamente válida para el destinatario.<br>
-    • El precio no incluye los refuerzos de acero necesarios para la ejecución.<br>
-    • Está cotización es realizada con base en los planos enviados por el cliente; cualquier cambio en obra será notificado para ajuste de volumen.
+    - La entrega de los materiales se programara de 3 a 5 dias habiles despues de realizado el pago total.<br>
+    - Esta cotizacion tiene una vigencia de 30 dias naturales.<br>
+    - El rendimiento del calculo de los materiales es con base en la ficha tecnica de los mismos.<br>
+    - El costo es en moneda nacional (Pesos Mexicanos).<br>
+    - En caso de devaluaciones monetarias o inflaciones mayores al 5%, se realizara un ajuste a los precios.<br>
+    - Esta cotizacion es de caracter confidencial y unicamente valida para el destinatario.<br>
+    - El precio no incluye los refuerzos de acero necesarios para la ejecucion.<br>
+    - Esta cotizacion es realizada con base en los planos enviados por el cliente; cualquier cambio en obra sera notificado para ajuste de volumen.
   </div>
   <div class="aviso">
     <strong>Aviso Legal</strong>
-    La información contenida en el presente documento tiene carácter exclusivamente técnico, informativo y referencial, y se proporciona como guía general con base en la experiencia y criterios técnicos de Waller prefabricados de concreto S.A. de C.V. e Instaladora de muros prefabricados S.A. de C.V. Su aplicación deberá ser evaluada y validada por los responsables técnicos, estructurales y de ejecución de cada proyecto, considerando las condiciones particulares de diseño, construcción, normatividad aplicable y uso específico.<br><br>
-    En consecuencia, las recomendaciones aquí contenidas podrán ser adaptadas, modificadas o complementadas conforme al criterio técnico correspondiente y no constituyen una instrucción obligatoria ni garantizan resultados específicos. Waller no asume responsabilidad alguna por el uso, interpretación, adaptación o implementación de la información contenida en este documento.<br><br>
-    Para cualquier aplicación definitiva, deberá realizarse una revisión y validación específica por parte de profesionales competentes y autorizados.
+    La informacion contenida en el presente documento tiene caracter exclusivamente tecnico, informativo y referencial, y se proporciona como guia general con base en la experiencia y criterios tecnicos de Waller prefabricados de concreto S.A. de C.V. e Instaladora de muros prefabricados S.A. de C.V. Su aplicacion debera ser evaluada y validada por los responsables tecnicos, estructurales y de ejecucion de cada proyecto.<br><br>
+    En consecuencia, las recomendaciones aqui contenidas podran ser adaptadas, modificadas o complementadas conforme al criterio tecnico correspondiente y no constituyen una instruccion obligatoria ni garantizan resultados especificos. Waller no asume responsabilidad alguna por el uso, interpretacion, adaptacion o implementacion de la informacion contenida en este documento.<br><br>
+    Para cualquier aplicacion definitiva, debera realizarse una revision y validacion especifica por parte de profesionales competentes y autorizados.
   </div>
-  ${ftr()}
+  ${ftr}
 </div>
 
 </body>
 </html>`;
 
-    browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    // Call PDFShift API
+    const pdfshiftData = JSON.stringify({
+      source: html,
+      landscape: false,
+      use_print: true
     });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 }
+
+    const pdfBuffer = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'api.pdfshift.io',
+        path: '/v3/convert/pdf',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + Buffer.from('api:sk_44a6758f06645393660909ca2d15f5e6943fed3b').toString('base64'),
+          'Content-Length': Buffer.byteLength(pdfshiftData)
+        }
+      };
+
+      const request = https.request(options, (response) => {
+        const chunks = [];
+        response.on('data', chunk => chunks.push(chunk));
+        response.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          if (response.statusCode === 200) {
+            resolve(buffer);
+          } else {
+            reject(new Error(`PDFShift error ${response.statusCode}: ${buffer.toString()}`));
+          }
+        });
+      });
+
+      request.on('error', reject);
+      request.write(pdfshiftData);
+      request.end();
     });
-    await browser.close();
 
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename || 'cotizacion'}.pdf"`,
-      'Content-Length': pdf.length
+      'Content-Length': pdfBuffer.length
     });
-    res.send(pdf);
+    res.send(pdfBuffer);
 
   } catch (err) {
-    if (browser) await browser.close().catch(() => {});
     console.error('PDF error:', err.message);
     res.status(500).json({ error: err.message });
   }
