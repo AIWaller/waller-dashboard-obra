@@ -338,8 +338,11 @@ const val  = id => parseFloat(document.getElementById(id).value)||0;
 const set  = (id,v) => {const el=document.getElementById(id);if(el)el.textContent=v;};
 
 const USERS = {
-  'Vendedor01':      {pass:'Ventas01',    nombre:'Gisela Lemus',      iniciales:'GL',rol:'vendedor'},
-  'Administrador01': {pass:'AdminWaller', nombre:'Gustavo Rodriguez', iniciales:'GR',rol:'admin'},
+  'Vendedor01':      {pass:'Ventas01',    nombre:'Gisela Lemus',      iniciales:'GL', rol:'vendedor'},
+  'Administrador01': {pass:'AdminWaller', nombre:'Gustavo Rodriguez', iniciales:'GR', rol:'admin'},
+  'WACOM01':         {pass:'Asdf01',      nombre:'Gisela Lemus',      iniciales:'GL', rol:'vendedor'},
+  'WACOM02':         {pass:'Qwer02',      nombre:'Juan Francisco Saavedra', iniciales:'JFS', rol:'vendedor'},
+  'WAAI01':          {pass:'Zxcv01',      nombre:'Control AI',        iniciales:'CAI', rol:'admin'},
 };
 let currentUser=null, adminActivo=false;
 
