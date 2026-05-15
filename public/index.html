@@ -153,14 +153,14 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
     <div class="form-section">
       <div class="section-title">Muros – Panel Waller</div>
       <div class="field-row">
-        <div class="field"><label>m² con desperdicio</label><input type="number" id="f_muros_m2" value="14.88" step="0.01" oninput="actualizar()"></div>
+        <div class="field"><label>m² con desperdicio</label><input type="number" id="f_muros_m2" value="14.88" step="0.01" oninput="actualizarCantidades();actualizar()"></div>
         <div class="field"><label>$ / m²</label><input type="number" id="f_muros_precio" value="723.81" step="0.01" oninput="actualizar()" class="admin-field" readonly></div>
       </div>
     </div>
     <div class="form-section">
       <div class="section-title">Losas – Panel Waller</div>
       <div class="field-row">
-        <div class="field"><label>m² con desperdicio</label><input type="number" id="f_losas_m2" value="14.88" step="0.01" oninput="actualizar()"></div>
+        <div class="field"><label>m² con desperdicio</label><input type="number" id="f_losas_m2" value="14.88" step="0.01" oninput="actualizarCantidades();actualizar()"></div>
         <div class="field"><label>$ / m²</label><input type="number" id="f_losas_precio" value="723.81" step="0.01" oninput="actualizar()" class="admin-field" readonly></div>
       </div>
     </div>
@@ -323,14 +323,14 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
 
 <script>
 const complementarios = [
-  {nombre:'Adhesivo flexible Pegawaller o similar',unidad:'Saco',cant:4,pu:114.17},
-  {nombre:'Varilla Corrugada 5/16" × 30 cm',unidad:'Kg',cant:5,pu:34.80},
-  {nombre:'Canal U lámina galvanizada cal.16',unidad:'Pieza',cant:42,pu:17.40},
-  {nombre:'Clavo para pistola de impacto Hilti o similar',unidad:'Pieza',cant:130,pu:2.09},
-  {nombre:'Espuma de Poliuretano Hilti o similar',unidad:'Bote',cant:4,pu:174.00},
-  {nombre:'Malla de fibra de vidrio 3"×150\'',unidad:'Rollo',cant:3,pu:102.56},
-  {nombre:'Sellador 3×1 Cemix o similar',unidad:'Cubeta',cant:1,pu:987.68},
-  {nombre:'Pijas punta de broca',unidad:'Pieza',cant:51,pu:6.50},
+  {nombre:'Adhesivo flexible Pegawaller o similar',unidad:'Saco',factor:0.13,pu:114.17},
+  {nombre:'Varilla Corrugada 5/16\u0022 \u00d7 30 cm',unidad:'Kg',factor:0.16,pu:34.80},
+  {nombre:'Canal U l\u00e1mina galvanizada cal.16',unidad:'Pieza',factor:2.00,pu:17.40},
+  {nombre:'Clavo para pistola de impacto Hilti o similar',unidad:'Pieza',factor:4.50,pu:2.09},
+  {nombre:'Espuma de Poliuretano Hilti o similar',unidad:'Bote',factor:0.13,pu:174.00},
+  {nombre:'Malla de fibra de vidrio 3\u0022\u00d7150\'',unidad:'Rollo',factor:0.005,pu:102.56},
+  {nombre:'Sellador 3\u00d71 Cemix o similar',unidad:'Cubeta',factor:0.02,pu:987.68},
+  {nombre:'Pijas punta de broca',unidad:'Pieza',factor:1.7137,pu:6.50},
 ];
 const fmt  = n => '$ '+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN = n => n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -390,15 +390,26 @@ function cerrarModal(){document.getElementById('modal-overlay').classList.remove
 function bloquearCampos(){document.querySelectorAll('.admin-field').forEach(el=>{el.readOnly=true;el.classList.remove('unlocked');});}
 function desbloquearCampos(){document.querySelectorAll('.admin-field').forEach(el=>{el.readOnly=false;el.classList.add('unlocked');});}
 
+function calcCant(factor){
+  const m2 = (parseFloat(document.getElementById('f_muros_m2')?.value)||0) + (parseFloat(document.getElementById('f_losas_m2')?.value)||0);
+  return Math.ceil(m2 * factor);
+}
 function renderCompInputs(){
   const tbody=document.getElementById('comp-body');
   tbody.innerHTML='';
   complementarios.forEach((c,i)=>{
+    const cant = calcCant(c.factor);
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${c.nombre}</td><td>${c.unidad}</td>
-      <td><input type="number" id="ci_cant_${i}" value="${c.cant}" step="0.01" min="0" oninput="actualizar()"></td>
+      <td><input type="number" id="ci_cant_${i}" value="${cant}" step="0.01" min="0" oninput="actualizar()"></td>
       <td><input type="number" id="ci_pu_${i}" value="${c.pu}" step="0.01" min="0" oninput="actualizar()" class="admin-field" readonly></td>`;
     tbody.appendChild(tr);
+  });
+}
+function actualizarCantidades(){
+  complementarios.forEach((c,i)=>{
+    const el = document.getElementById(`ci_cant_${i}`);
+    if(el) el.value = calcCant(c.factor);
   });
 }
 function renderCompDocRows(items){
