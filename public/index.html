@@ -519,22 +519,17 @@ function generarPDF(){
 }
 
 function nuevaCotizacion(){
-  // Clear client fields
+  // Solo borrar datos del cliente
   document.getElementById('f_cliente').value = '';
   document.getElementById('f_proyecto').value = '';
   document.getElementById('f_ubicacion').value = '';
-  // Reset date to today
+  // Resetear fecha a hoy
   document.getElementById('f_fecha').value = new Date().toISOString().split('T')[0];
-  // Reset m2 to 0
-  document.getElementById('f_muros_m2').value = 0;
-  document.getElementById('f_losas_m2').value = 0;
-  // Increment folio consecutivo
+  // Incrementar folio
   const consec = parseInt(document.getElementById('f_consecutivo').value) || 50;
   document.getElementById('f_consecutivo').value = consec + 1;
-  // Also save to server
   fetch('/api/counter/increment', {method:'POST'}).catch(()=>{});
-  // Recalculate complementarios with m2=0
-  actualizarCantidades();
+  // Mantener m2, flete y complementarios - solo actualizar vista
   actualizar();
 }
 
