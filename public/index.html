@@ -539,12 +539,15 @@ function nuevaCotizacion(){
 }
 
 // INIT
-renderCompInputs();
 document.getElementById('f_fecha').value=new Date().toISOString().split('T')[0];
 fetch('/api/counter').then(r=>r.json()).then(d=>{
   document.getElementById('f_consecutivo').value=d.value;
+  renderCompInputs();
   actualizar();
-}).catch(()=>{});
+}).catch(()=>{
+  renderCompInputs();
+  actualizar();
+});
 setTimeout(()=>document.getElementById('login-user').focus(),200);
 </script>
 </body>
