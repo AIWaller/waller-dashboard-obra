@@ -30,6 +30,8 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
 .btn-generate{background:var(--blue);color:#fff;border:none;padding:10px 22px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .2s;}
 .btn-generate:hover{background:var(--accent);}
 .btn-generate:disabled{background:#888;cursor:not-allowed;}
+.btn-nueva{background:transparent;color:#2ecc71;border:1px solid #2ecc71;padding:10px 18px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-right:8px;transition:all .2s;}
+.btn-nueva:hover{background:#2ecc71;color:#fff;}
 .btn-admin{background:transparent;color:#aaa;border:1px solid #555;padding:10px 16px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;cursor:pointer;margin-right:8px;transition:all .2s;}
 .btn-admin:hover{color:#fff;border-color:#aaa;}
 .btn-admin.active{color:#2ecc71;border-color:#2ecc71;}
@@ -128,6 +130,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
     </div>
     <button class="btn-logout" onclick="doLogout()">✕ Salir</button>
     <button class="btn-admin" id="btn-admin" onclick="toggleAdmin()">🔒 Admin</button>
+    <button class="btn-nueva" id="btn-nueva" onclick="nuevaCotizacion()">✚ Nueva Cotización</button>
     <button class="btn-generate" id="btn-pdf" onclick="generarPDF()">⬇ Descargar PDF</button>
   </div>
 </header>
@@ -513,6 +516,26 @@ function generarPDF(){
     btn.textContent='⬇ Descargar PDF';
     btn.disabled=false;
   });
+}
+
+function nuevaCotizacion(){
+  // Clear client fields
+  document.getElementById('f_cliente').value = '';
+  document.getElementById('f_proyecto').value = '';
+  document.getElementById('f_ubicacion').value = '';
+  // Reset date to today
+  document.getElementById('f_fecha').value = new Date().toISOString().split('T')[0];
+  // Reset m2 to 0
+  document.getElementById('f_muros_m2').value = 0;
+  document.getElementById('f_losas_m2').value = 0;
+  // Increment folio consecutivo
+  const consec = parseInt(document.getElementById('f_consecutivo').value) || 50;
+  document.getElementById('f_consecutivo').value = consec + 1;
+  // Also save to server
+  fetch('/api/counter/increment', {method:'POST'}).catch(()=>{});
+  // Recalculate complementarios with m2=0
+  actualizarCantidades();
+  actualizar();
 }
 
 // INIT
