@@ -140,7 +140,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
     <div class="form-section">
       <div class="section-title">Cliente</div>
       <div class="field"><label>Nombre del cliente</label><input type="text" id="f_cliente" value="" oninput="actualizar()"></div>
-      <div class="field"><label>Proyecto</label><input type="text" id="f_proyecto" value="" oninput="actualizar()"></div>
+      <div class="field"><label>Proyecto</label><input type="text" id="f_proyecto" value="Motivo de Ingreso INFEJAL" oninput="actualizar()"></div>
       <div class="field"><label>Ubicación</label><input type="text" id="f_ubicacion" value="" oninput="actualizar()"></div>
       <div class="field-row">
         <div class="field"><label>Fecha</label><input type="date" id="f_fecha" oninput="actualizar()"></div>
@@ -346,6 +346,7 @@ const USERS = {
   'WACOM01':         {pass:'Asdf01',      nombre:'Gisela Lemus',      iniciales:'GL', rol:'vendedor'},
   'WACOM02':         {pass:'Qwer02',      nombre:'Juan Francisco Saavedra', iniciales:'JFS', rol:'vendedor'},
   'WAAI01':          {pass:'Zxcv01',      nombre:'Control AI',        iniciales:'CAI', rol:'admin'},
+  'Proyectos01':     {pass:'01',           nombre:'Proyectos',         iniciales:'PR',  rol:'vendedor'},
 };
 let currentUser=null, adminActivo=false;
 
