@@ -192,7 +192,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
           <div class="watermark"><svg viewBox="0 0 800 1120" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="wm1" x="0" y="0" width="240" height="120" patternUnits="userSpaceOnUse" patternTransform="rotate(-22)"><image href="/img/logo.jpg" x="8" y="8" width="120" height="37" opacity="1"/><image href="/img/logo.jpg" x="128" y="68" width="120" height="37" opacity="1"/></pattern></defs><rect width="800" height="1120" fill="url(#wm1)" opacity="0.07"/></svg></div>
           <div class="doc-header">
             <div class="doc-logo"><img src="/img/logo.jpg" alt="Waller"></div>
-            <div class="doc-meta"><div class="folio" id="d_folio">WA 260507-GL-50</div><div class="fecha" id="d_fecha"></div></div>
+            <div class="doc-meta"><div class="folio" id="d_folio">WAIN 260507-GL-50</div><div class="fecha" id="d_fecha"></div></div>
           </div>
           <div class="client-bar">
             <div><span class="cb-label">Cliente</span><span class="cb-val" id="d_cliente"></span></div>
@@ -440,9 +440,9 @@ function actualizar(){
   const dateCode=yy+mm2+dd2;
   const iniciales=currentUser?currentUser.iniciales:'--';
   const consec=String(parseInt(document.getElementById('f_consecutivo').value)||50).padStart(2,'0');
-  const folio=`WA ${dateCode}-${iniciales}-${consec}`;
+  const folio=`WAIN ${dateCode}-${iniciales}-${consec}`;
   const prefixEl=document.getElementById('folio-prefix');
-  if(prefixEl)prefixEl.textContent=`WA ${dateCode}-${iniciales}-`;
+  if(prefixEl)prefixEl.textContent=`WAIN ${dateCode}-${iniciales}-`;
   document.querySelectorAll('[id^="d_folio"]').forEach(e=>e.textContent=folio);
   document.querySelectorAll('[id^="d_fecha"]').forEach(e=>e.textContent=fechaLeg);
   set('d_cliente',cliente);set('d_proyecto',proyecto);set('d_proyecto2',proyecto);set('d_ubicacion',ubicacion);
