@@ -140,7 +140,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
     <div class="form-section">
       <div class="section-title">Cliente</div>
       <div class="field"><label>Nombre del cliente</label><input type="text" id="f_cliente" value="" oninput="actualizar()"></div>
-      <div class="field"><label>Proyecto</label><input type="text" id="f_proyecto" value="Motivo de Ingreso INFEJAL" oninput="actualizar()"></div>
+      <div class="field"><label>Proyecto</label> <select id="f_proyecto" oninput="actualizar()" style="width:100%;border:1.5px solid var(--border);padding:8px 10px;font-family:'Barlow',sans-serif;font-size:13px;color:var(--dark);background:#fafafa;outline:none;">   <option value="Motivo de Ingreso">Motivo de Ingreso</option>   <option value="Escuela Tipo">Escuela Tipo</option> </select></div>
       <div class="field"><label>Ubicación</label><input type="text" id="f_ubicacion" value="" oninput="actualizar()"></div>
       <div class="field-row">
         <div class="field"><label>Fecha</label><input type="date" id="f_fecha" oninput="actualizar()"></div>
