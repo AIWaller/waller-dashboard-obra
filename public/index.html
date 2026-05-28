@@ -32,6 +32,8 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
 .btn-generate:disabled{background:#888;cursor:not-allowed;}
 .btn-nueva{background:transparent;color:#2ecc71;border:1px solid #2ecc71;padding:10px 18px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-right:8px;transition:all .2s;}
 .btn-nueva:hover{background:#2ecc71;color:#fff;}
+.btn-nueva{background:transparent;color:#2ecc71;border:1px solid #2ecc71;padding:10px 18px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-right:8px;transition:all .2s;}
+.btn-nueva:hover{background:#2ecc71;color:#fff;}
 .btn-admin{background:transparent;color:#aaa;border:1px solid #555;padding:10px 16px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;cursor:pointer;margin-right:8px;transition:all .2s;}
 .btn-admin:hover{color:#fff;border-color:#aaa;}
 .btn-admin.active{color:#2ecc71;border-color:#2ecc71;}
@@ -131,6 +133,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
     <button class="btn-logout" onclick="doLogout()">✕ Salir</button>
     <button class="btn-admin" id="btn-admin" onclick="toggleAdmin()">🔒 Admin</button>
     <button class="btn-nueva" id="btn-nueva" onclick="nuevaCotizacion()">✚ Nueva Cotización</button>
+    <button class="btn-nueva" id="btn-nueva" onclick="nuevaCotizacion()">✚ Nueva Cotización</button>
     <button class="btn-generate" id="btn-pdf" onclick="generarPDF()">⬇ Descargar PDF</button>
   </div>
 </header>
@@ -140,14 +143,18 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
     <div class="form-section">
       <div class="section-title">Cliente</div>
       <div class="field"><label>Nombre del cliente</label><input type="text" id="f_cliente" value="" oninput="actualizar()"></div>
-      <div class="field"><label>Proyecto</label> <select id="f_proyecto" oninput="actualizar()" style="width:100%;border:1.5px solid var(--border);padding:8px 10px;font-family:'Barlow',sans-serif;font-size:13px;color:var(--dark);background:#fafafa;outline:none;">   <option value="Motivo de Ingreso">Motivo de Ingreso</option>   <option value="Escuela Tipo">Escuela Tipo</option> </select></div>
+      <div class="field"><label>Proyecto</label>
+<select id="f_proyecto" oninput="actualizar()" style="width:100%;border:1.5px solid var(--border);padding:8px 10px;font-family:'Barlow',sans-serif;font-size:13px;color:var(--dark);background:#fafafa;outline:none;transition:border-color .2s;">
+  <option value="Motivo de Ingreso">Motivo de Ingreso</option>
+  <option value="Escuela Tipo">Escuela Tipo</option>
+</select></div>
       <div class="field"><label>Ubicación</label><input type="text" id="f_ubicacion" value="" oninput="actualizar()"></div>
       <div class="field-row">
         <div class="field"><label>Fecha</label><input type="date" id="f_fecha" oninput="actualizar()"></div>
         <div class="field">
           <label>Folio</label>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span id="folio-prefix" style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--blue);white-space:nowrap;">WA 260507-GL-</span>
+            <span id="folio-prefix" style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--blue);white-space:nowrap;">WAIN 260507-GL-</span>
             <input type="number" id="f_consecutivo" value="50" min="1" max="999" step="1" style="width:60px;text-align:center;font-size:16px;font-weight:700;" oninput="actualizar()">
           </div>
         </div>
@@ -327,12 +334,12 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
 <script>
 const complementarios = [
   {nombre:'Adhesivo flexible Pegawaller o similar',unidad:'Saco',factor:0.13,pu:333.26},
-  {nombre:'Varilla Corrugada 5/16\u0022 \u00d7 30 cm',unidad:'Kg',factor:0.16,pu:34.80},
-  {nombre:'Canal U l\u00e1mina galvanizada cal.16',unidad:'Pieza',factor:2.00,pu:17.40},
+  {nombre:'Varilla Corrugada 5/16" × 30 cm',unidad:'Kg',factor:0.16,pu:34.80},
+  {nombre:'Canal U lámina galvanizada cal.16',unidad:'Pieza',factor:2.00,pu:17.40},
   {nombre:'Clavo para pistola de impacto Hilti o similar',unidad:'Pieza',factor:4.50,pu:2.09},
   {nombre:'Espuma de Poliuretano Hilti o similar',unidad:'Bote',factor:0.13,pu:174.00},
-  {nombre:'Malla de fibra de vidrio 3\u0022\u00d7150\'',unidad:'Rollo',factor:0.005,pu:102.56},
-  {nombre:'Sellador 3\u00d71 Cemix o similar',unidad:'Cubeta',factor:0.02,pu:987.68},
+  {nombre:'Malla de fibra de vidrio 3"×150'',unidad:'Rollo',factor:0.005,pu:102.56},
+  {nombre:'Sellador 3×1 Cemix o similar',unidad:'Cubeta',factor:0.02,pu:987.68},
   {nombre:'Pijas punta de broca',unidad:'Pieza',factor:1.7137,pu:6.50},
 ];
 const fmt  = n => '$ '+n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -465,12 +472,27 @@ function actualizar(){
   set('d_viajes',fmtN(viajes));set('d_flete_xv',fmt(fletePrecio));set('d_flete_imp',fmt(fleteSub));
   set('d_flete_sub',fmt(fleteSub));set('d_flete_iva_t',fmt(fleteIva));set('d_flete_tot',fmt(fleteTot));
   const compRows=items.map(c=>{const imp=c.cant*c.pu;return{nombre:c.nombre,unidad:c.unidad,cant:fmtN(c.cant),pu:fmt(c.pu),imp:fmt(imp)};});
-  const proyecto = document.getElementById('f_proyecto').value;
-const esEscuela = proyecto === 'Escuela Tipo';   const precioMuros = document.getElementById('f_muros_precio');   const m2Muros = document.getElementById('f_muros_m2');   const secciones = document.querySelectorAll('.section-title');   if(esEscuela){     secciones[1].textContent = 'Muros \u2013 Panel Waller 9cm';     secciones[2].textContent = 'Losas \u2013 Panel Waller 7.5cm';     if(precioMuros) precioMuros.value = '800.01';     if(m2Muros && m2Muros.value === '14.88') m2Muros.value = '';   } else {     secciones[1].textContent = 'Muros \u2013 Panel Waller';     secciones[2].textContent = 'Losas \u2013 Panel Waller';     if(precioMuros) precioMuros.value = '723.81';     if(m2Muros && m2Muros.value === '') m2Muros.value = '14.88';   }   const lblMuros = document.querySelector('.form-section:nth-child(2) .field:first-child label');   const lblLosas = document.querySelector('.form-section:nth-child(3) .field:first-child label');   const precioMuros = document.getElementById('f_muros_precio');   if(esEscuela){     if(lblMuros) lblMuros.textContent = 'm\u00b2 con desperdicio 9cm';     if(lblLosas) lblLosas.textContent = 'm\u00b2 con desperdicio 7.5cm';     if(precioMuros && precioMuros.value !== '800.01'){ precioMuros.value = '800.01'; }     if(!document.getElementById('f_muros_m2').dataset.userSet) document.getElementById('f_muros_m2').value = '';   } else {     if(lblMuros) lblMuros.textContent = 'm\u00b2 con desperdicio';     if(lblLosas) lblLosas.textContent = 'm\u00b2 con desperdicio';     if(precioMuros) precioMuros.value = '723.81';   }
-const imgPlanta = document.getElementById('preview-planta');
-const imgAxono = document.getElementById('preview-axono');
-if(imgPlanta) imgPlanta.src = esEscuela ? '/img/escuela.jpg' : '/img/planta.jpg';
-if(imgAxono) imgAxono.style.display = esEscuela ? 'none' : 'block'; window._cotState={
+  // Escuela Tipo changes
+  const esEscuela = (document.getElementById('f_proyecto').value === 'Escuela Tipo');
+  const precioMuros = document.getElementById('f_muros_precio');
+  const m2Muros = document.getElementById('f_muros_m2');
+  const secciones = document.querySelectorAll('.section-title');
+  if(esEscuela){
+    if(secciones[1]) secciones[1].childNodes[0].textContent = 'Muros – Panel Waller 9cm ';
+    if(secciones[2]) secciones[2].childNodes[0].textContent = 'Losas – Panel Waller 7.5cm ';
+    if(precioMuros && precioMuros.value === '723.81'){ precioMuros.value = '800.01'; }
+    if(m2Muros && m2Muros.value === '14.88') m2Muros.value = '';
+  } else {
+    if(secciones[1]) secciones[1].childNodes[0].textContent = 'Muros – Panel Waller ';
+    if(secciones[2]) secciones[2].childNodes[0].textContent = 'Losas – Panel Waller ';
+    if(precioMuros && precioMuros.value === '800.01'){ precioMuros.value = '723.81'; }
+    if(m2Muros && m2Muros.value === '') m2Muros.value = '14.88';
+  }
+  const imgPlanta = document.getElementById('preview-planta');
+  const imgAxono = document.getElementById('preview-axono');
+  if(imgPlanta) imgPlanta.src = esEscuela ? '/img/escuela.jpg' : '/img/planta.jpg';
+  if(imgAxono) imgAxono.style.display = esEscuela ? 'none' : 'block';
+  window._cotState={
     folio,fecha:fechaLeg,cliente,proyecto,ubicacion,
     panel_total:fmt(panelSub),comp_total:fmt(compSub),flete_total:fmt(fleteSub),m2_costo:fmt(totalM2),
     subtotal:fmt(subtotal),iva:fmt(iva),total:fmt(total),
