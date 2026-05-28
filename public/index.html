@@ -164,6 +164,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
       <div class="section-title">Muros – Panel Waller</div>
       <div class="field-row">
         <div class="field"><label>m² con desperdicio</label><input type="number" id="f_muros_m2" value="14.88" step="0.01" oninput="actualizarCantidades();actualizar()"></div>
+        <div id="warn_muros" style="display:none;color:#e74c3c;font-size:10px;margin-top:-8px;margin-bottom:4px;padding:4px 8px;background:#fdecea;border-left:3px solid #e74c3c;"></div>
         <div class="field"><label>$ / m²</label><input type="number" id="f_muros_precio" value="723.81" step="0.01" oninput="actualizar()" class="admin-field" readonly></div>
       </div>
     </div>
@@ -171,6 +172,7 @@ body{font-family:'Barlow',sans-serif;background:#eaeaea;color:var(--dark);min-he
       <div class="section-title">Losas – Panel Waller</div>
       <div class="field-row">
         <div class="field"><label>m² con desperdicio</label><input type="number" id="f_losas_m2" value="14.88" step="0.01" oninput="actualizarCantidades();actualizar()"></div>
+        <div id="warn_losas" style="display:none;color:#e74c3c;font-size:10px;margin-top:-8px;margin-bottom:4px;padding:4px 8px;background:#fdecea;border-left:3px solid #e74c3c;"></div>
         <div class="field"><label>$ / m²</label><input type="number" id="f_losas_precio" value="723.81" step="0.01" oninput="actualizar()" class="admin-field" readonly></div>
       </div>
     </div>
@@ -492,6 +494,25 @@ function actualizar(){
   const imgAxono = document.getElementById('preview-axono');
   if(imgPlanta) imgPlanta.src = esEscuela ? '/img/escuela.jpg' : '/img/planta.jpg';
   if(imgAxono) imgAxono.style.display = esEscuela ? 'none' : 'block';
+  // Validar piezas exactas
+  const PIEZA_M2 = 1.4884;
+  const piezasMuros = murosM2 / PIEZA_M2;
+  const piezasLosas = losasM2 / PIEZA_M2;
+  const murosExacto = murosM2 === 0 || Math.abs(piezasMuros - Math.round(piezasMuros)) < 0.001;
+  const losasExacto = losasM2 === 0 || Math.abs(piezasLosas - Math.round(piezasLosas)) < 0.001;
+  const warnMuros = document.getElementById('warn_muros');
+  const warnLosas = document.getElementById('warn_losas');
+  const btnPDF = document.getElementById('btn-pdf');
+  if(murosM2 > 0 && !murosExacto){
+    const pr = Math.ceil(piezasMuros);
+    if(warnMuros){warnMuros.style.display='block';warnMuros.textContent='Ajusta a '+(pr*PIEZA_M2).toFixed(2)+' m2 ('+pr+' piezas completas)';}
+  } else { if(warnMuros) warnMuros.style.display='none'; }
+  if(losasM2 > 0 && !losasExacto){
+    const pr = Math.ceil(piezasLosas);
+    if(warnLosas){warnLosas.style.display='block';warnLosas.textContent='Ajusta a '+(pr*PIEZA_M2).toFixed(2)+' m2 ('+pr+' piezas completas)';}
+  } else { if(warnLosas) warnLosas.style.display='none'; }
+  const hayError = !murosExacto || !losasExacto;
+  if(btnPDF){btnPDF.disabled=hayError;btnPDF.style.background=hayError?'#888':'';btnPDF.title=hayError?'Corrige los m2 antes de descargar':'';}
   window._cotState={
     folio,fecha:fechaLeg,cliente,proyecto,ubicacion,
     panel_total:fmt(panelSub),comp_total:fmt(compSub),flete_total:fmt(fleteSub),m2_costo:fmt(totalM2),
