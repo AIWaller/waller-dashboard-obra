@@ -478,13 +478,13 @@ function actualizar(){
   const m2Muros = document.getElementById('f_muros_m2');
   const secciones = document.querySelectorAll('.section-title');
   if(esEscuela){
-    if(secciones[1]) secciones[1].childNodes[0].textContent = 'Muros – Panel Waller 9cm ';
-    if(secciones[2]) secciones[2].childNodes[0].textContent = 'Losas – Panel Waller 7.5cm ';
+    if(secciones[1]) secciones[1].childNodes[0].textContent = 'Muros - Panel Waller 9cm';
+    if(secciones[2]) secciones[2].childNodes[0].textContent = 'Losas - Panel Waller 7.5cm';
     if(precioMuros && precioMuros.value === '723.81'){ precioMuros.value = '800.01'; }
     if(m2Muros && m2Muros.value === '14.88') m2Muros.value = '';
   } else {
-    if(secciones[1]) secciones[1].childNodes[0].textContent = 'Muros – Panel Waller ';
-    if(secciones[2]) secciones[2].childNodes[0].textContent = 'Losas – Panel Waller ';
+    if(secciones[1]) secciones[1].childNodes[0].textContent = 'Muros - Panel Waller';
+    if(secciones[2]) secciones[2].childNodes[0].textContent = 'Losas - Panel Waller';
     if(precioMuros && precioMuros.value === '800.01'){ precioMuros.value = '723.81'; }
     if(m2Muros && m2Muros.value === '') m2Muros.value = '14.88';
   }
