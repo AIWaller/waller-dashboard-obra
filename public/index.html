@@ -466,7 +466,7 @@ function actualizar(){
   set('d_flete_sub',fmt(fleteSub));set('d_flete_iva_t',fmt(fleteIva));set('d_flete_tot',fmt(fleteTot));
   const compRows=items.map(c=>{const imp=c.cant*c.pu;return{nombre:c.nombre,unidad:c.unidad,cant:fmtN(c.cant),pu:fmt(c.pu),imp:fmt(imp)};});
   const proyecto = document.getElementById('f_proyecto').value;
-const esEscuela = proyecto === 'Escuela Tipo';
+const esEscuela = proyecto === 'Escuela Tipo';   const lblMuros = document.querySelector('.form-section:nth-child(2) .field:first-child label');   const lblLosas = document.querySelector('.form-section:nth-child(3) .field:first-child label');   const precioMuros = document.getElementById('f_muros_precio');   if(esEscuela){     if(lblMuros) lblMuros.textContent = 'm\u00b2 con desperdicio 9cm';     if(lblLosas) lblLosas.textContent = 'm\u00b2 con desperdicio 7.5cm';     if(precioMuros && precioMuros.value !== '800.01'){ precioMuros.value = '800.01'; }     if(!document.getElementById('f_muros_m2').dataset.userSet) document.getElementById('f_muros_m2').value = '';   } else {     if(lblMuros) lblMuros.textContent = 'm\u00b2 con desperdicio';     if(lblLosas) lblLosas.textContent = 'm\u00b2 con desperdicio';     if(precioMuros) precioMuros.value = '723.81';   }
 const imgPlanta = document.getElementById('preview-planta');
 const imgAxono = document.getElementById('preview-axono');
 if(imgPlanta) imgPlanta.src = esEscuela ? '/img/escuela.jpg' : '/img/planta.jpg';
