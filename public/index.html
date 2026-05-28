@@ -465,7 +465,12 @@ function actualizar(){
   set('d_viajes',fmtN(viajes));set('d_flete_xv',fmt(fletePrecio));set('d_flete_imp',fmt(fleteSub));
   set('d_flete_sub',fmt(fleteSub));set('d_flete_iva_t',fmt(fleteIva));set('d_flete_tot',fmt(fleteTot));
   const compRows=items.map(c=>{const imp=c.cant*c.pu;return{nombre:c.nombre,unidad:c.unidad,cant:fmtN(c.cant),pu:fmt(c.pu),imp:fmt(imp)};});
-  window._cotState={
+  const proyecto = document.getElementById('f_proyecto').value;
+const esEscuela = proyecto === 'Escuela Tipo';
+const imgPlanta = document.getElementById('preview-planta');
+const imgAxono = document.getElementById('preview-axono');
+if(imgPlanta) imgPlanta.src = esEscuela ? '/img/escuela.jpg' : '/img/planta.jpg';
+if(imgAxono) imgAxono.style.display = esEscuela ? 'none' : 'block'; window._cotState={
     folio,fecha:fechaLeg,cliente,proyecto,ubicacion,
     panel_total:fmt(panelSub),comp_total:fmt(compSub),flete_total:fmt(fleteSub),m2_costo:fmt(totalM2),
     subtotal:fmt(subtotal),iva:fmt(iva),total:fmt(total),
