@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waller — Control de Obra</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
+#login-overlay{display:none;position:fixed;inset:0;background:#1B6BB0;z-index:1000;align-items:center;justify-content:center}
+#login-box{background:#fff;border-radius:12px;padding:2.5rem;width:360px;text-align:center}
+#login-box .logo{font-size:22px;font-weight:700;color:#1B6BB0;margin-bottom:0.25rem}
+#login-box .sub{font-size:13px;color:#64748b;margin-bottom:2rem}
+#login-box input{width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none}
+#login-box button{width:100%;padding:11px;background:#1B6BB0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+#login-box .err{color:#dc2626;font-size:13px;margin-top:8px}
+.navbar{background:#1B6BB0;color:#fff;padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.navbar-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.navbar-brand .badge{background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px;font-size:12px}
+.navbar-right{display:flex;align-items:center;gap:1rem;font-size:13px}
+.navbar-right a{color:rgba(255,255,255,0.8);text-decoration:none;display:flex;align-items:center;gap:5px}
+.navbar-right a:hover{color:#fff}
+.main{max-width:1200px;margin:0 auto;padding:1.5rem}
+.project-bar{background:#fff;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;flex-wrap:wrap;gap:.75rem}
+.project-bar h2{font-size:18px;font-weight:600;color:#1B6BB0}
+.project-bar .meta{font-size:13px;color:#64748b;display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;margin-top:6px}
+.btn-outline{padding:7px 14px;border:1px solid #1B6BB0;color:#1B6BB0;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;background:transparent;display:flex;align-items:center;gap:5px}
+.btn-outline:hover{background:#1B6BB0;color:#fff}
+.tabs{display:flex;gap:0.5rem;margin-bottom:1.5rem;overflow-x:auto;padding-bottom:2px}
+.tab{padding:8px 18px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;border:1px solid transparent;color:#64748b;background:#fff}
+.tab:hover{color:#1B6BB0;border-color:#1B6BB0}
+.tab.active{background:#1B6BB0;color:#fff;border-color:#1B6BB0}
+.section{display:none}
+.section.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi{background:#fff;border-radius:10px;padding:1rem 1.25rem;border:1px solid #e2e8f0}
+.kpi .label{font-size:12px;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.kpi .value{font-size:24px;font-weight:600;color:#1a202c}
+.kpi .sub{font-size:12px;color:#64748b;margin-top:3px}
+.kpi.blue .value{color:#1B6BB0}
+.kpi.green .value{color:#059669}
+.kpi.red .value{color:#dc2626}
+.kpi.amber .value{color:#d97706}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.chart-card{background:#fff;border-radius:10px;padding:1.25rem;border:1px solid #e2e8f0;margin-bottom:0}
+.chart-card h3{font-size:14px;font-weight:600;color:#3D4550;margin-bottom:1rem;display:flex;align-items:center;gap:6px}
+.chart-wrap{position:relative;height:220px}
+.table-card{background:#fff;border-radius:10px;padding:1.25rem;border:1px solid #e2e8f0;margin-bottom:1.5rem;overflow-x:auto}
+.table-card h3{font-size:14px;font-weight:600;color:#3D4550;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f8fafc;padding:9px 12px;text-align:left;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid #f1f5f9;color:#334155}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.pill.verde{background:#d1fae5;color:#065f46}
+.pill.amarillo{background:#fef3c7;color:#92400e}
+.pill.rojo{background:#fee2e2;color:#991b1b}
+.pill.morado{background:#ede9fe;color:#4c1d95}
+.diag{border-radius:10px;padding:1.25rem;border-left:4px solid;margin-bottom:1.25rem}
+.diag.amarillo{background:#fffbeb;border-color:#d97706}
+.diag.rojo{background:#fef2f2;border-color:#dc2626}
+.diag h4{font-size:15px;font-weight:600;margin-bottom:6px}
+.diag.amarillo h4{color:#92400e}
+.diag.rojo h4{color:#991b1b}
+.diag p{font-size:13px;line-height:1.6;color:#374151;margin-bottom:8px}
+.diag ul{font-size:13px;color:#374151;padding-left:1.2rem;line-height:1.8}
+.evm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem}
+.evm-card{background:#fff;border-radius:10px;padding:1rem;border:1px solid #e2e8f0;text-align:center}
+.evm-card .evm-label{font-size:11px;color:#64748b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+.evm-card .evm-val{font-size:22px;font-weight:700;color:#1B6BB0}
+.evm-card .evm-name{font-size:12px;color:#94a3b8;margin-top:2px}
+.evm-card .evm-hint{font-size:11px;color:#b0bac7;margin-top:4px;line-height:1.4}
+.evm-card.warn .evm-val{color:#d97706}
+.idx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.idx-card{background:#fff;border-radius:10px;padding:1.25rem;border:1px solid #e2e8f0}
+.idx-card h4{font-size:13px;color:#64748b;margin-bottom:.5rem}
+.idx-val{font-size:32px;font-weight:700}
+.idx-val.danger{color:#dc2626}
+.idx-desc{font-size:12px;color:#64748b;margin-top:4px;line-height:1.5}
+.idx-objetivo{display:inline-block;font-size:11px;font-weight:600;color:#8a96a3;background:rgba(0,0,0,0.06);border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+.upload-zone{border:2px dashed #cbd5e1;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:border-color .2s}
+.upload-zone:hover{border-color:#1B6BB0}
+.upload-zone i{font-size:36px;color:#94a3b8;margin-bottom:.75rem;display:block}
+.upload-zone p{font-size:14px;color:#64748b}
+.upload-zone small{font-size:12px;color:#94a3b8}
+input[type=file]{display:none}
+.btn-primary{padding:9px 20px;background:#1B6BB0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn-primary:hover{background:#155e9a}
+.upload-result{margin-top:1rem;font-size:13px;color:#374151;background:#f8fafc;border-radius:8px;padding:1rem;display:none}
+.footer{text-align:center;font-size:12px;color:#94a3b8;padding:2rem 0 1rem}
+.est-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.est-pagada{background:#d1fae5;color:#065f46}.est-revision{background:#fef3c7;color:#92400e}.est-enviada{background:#dbeafe;color:#1e40af}.est-rechazada{background:#fee2e2;color:#991b1b}
+.cambio-extra{background:#fee2e2;color:#991b1b}.cambio-deduct{background:#d1fae5;color:#065f46}
+.info-box{background:#fffbeb;border-left:4px solid #d97706;border-radius:8px;padding:1rem 1.25rem;margin-bottom:1.25rem;font-size:13px;color:#374151;line-height:1.6}
+.flujo-bar-wrap{display:flex;gap:8px;align-items:flex-end;overflow-x:auto;padding-bottom:4px;margin-bottom:1rem}
+.flujo-col{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px}
+.flujo-mes-lbl{font-size:11px;color:#64748b;font-weight:600;text-align:center}
+.flujo-monto-lbl{font-size:10px;color:#94a3b8;text-align:center}
+/* ── CONTRATO ── */
+.alerta-contrato{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:8px;margin-bottom:8px;font-size:13px;line-height:1.5}
+.alerta-contrato.roja{background:#fef2f2;border-left:4px solid #dc2626}
+.alerta-contrato.amarilla{background:#fffbeb;border-left:4px solid #d97706}
+.alerta-contrato.verde{background:#f0fdf4;border-left:4px solid #059669}
+.alerta-contrato.azul{background:#eff6ff;border-left:4px solid #1B6BB0}
+.alerta-contrato .icono{font-size:16px;flex-shrink:0;margin-top:1px}
+.alerta-contrato strong{display:block;margin-bottom:2px;font-size:13px}
+.plazo-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.plazo-row:last-child{border-bottom:none}
+.plazo-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.plazo-badge.dias5{background:#dbeafe;color:#1e40af}
+.plazo-badge.dias3{background:#fef3c7;color:#92400e}
+.plazo-badge.dias30{background:#d1fae5;color:#065f46}
+.contrato-ficha{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:1rem}
+.contrato-ficha-item span:first-child{color:#64748b;display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.calc-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.calc-wrap input{padding:8px 12px;border:1px solid #e2e8f0;border-radius:7px;font-size:14px;width:120px;outline:none}
+.calc-wrap input:focus{border-color:#1B6BB0}
+.calc-resultado{font-size:22px;font-weight:700;color:#dc2626;margin-top:8px}
+/* ── BITÁCORA ── */
+.bit-form{background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:1.25rem;margin-bottom:1.5rem}
+.bit-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.bit-label{display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.bit-input{width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;outline:none;font-family:inherit}
+.bit-input:focus{border-color:#1B6BB0}
+.bit-textarea{width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:7px;font-size:13px;resize:vertical;min-height:90px;outline:none;font-family:inherit}
+.bit-textarea:focus{border-color:#1B6BB0}
+.bit-foto-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:10px}
+.bit-foto-zone:hover{border-color:#1B6BB0}
+.bit-preview{width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px;display:none}
+.bit-search{width:100%;padding:9px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;margin-bottom:1rem;outline:none}
+.bit-search:focus{border-color:#1B6BB0}
+.bit-entry{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:1rem 1.25rem;margin-bottom:10px}
+.bit-entry-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px}
+.bit-entry-meta{display:flex;flex-direction:column;gap:2px}
+.bit-entry-fecha{font-weight:700;font-size:14px;color:#1B6BB0}
+.bit-entry-info{font-size:12px;color:#64748b}
+.bit-entry-texto{font-size:13px;color:#334155;line-height:1.7;white-space:pre-wrap;margin-top:6px}
+.bit-thumb{width:72px;height:72px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0;border:1px solid #e2e8f0}
+.bit-empty{text-align:center;padding:3rem;color:#94a3b8;font-size:13px}
+@media(max-width:600px){.kpi-grid{grid-template-columns:1fr 1fr}.chart-grid{grid-template-columns:1fr}.idx-grid{grid-template-columns:1fr}.main{padding:1rem}.bit-form-grid{grid-template-columns:1fr}.contrato-ficha{grid-template-columns:1fr}}
+/* ── PANEL ARCHIVOS ── */
+.arch-fila{display:grid;grid-template-columns:200px 1fr 120px 110px auto;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.arch-fila:last-child{border-bottom:none}
+.arch-tipo{font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arch-secciones{color:#94a3b8;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arch-fecha{color:#64748b;font-size:12px;white-space:nowrap}
+.arch-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.arch-chip.ok{background:#d1fae5;color:#065f46}
+.arch-chip.error{background:#fee2e2;color:#991b1b}
+.arch-chip.vacio{background:#f1f5f9;color:#94a3b8}
+.arch-actions{display:flex;gap:5px;justify-content:flex-end;flex-shrink:0}
+.btn-xs{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.btn-xs.pri{background:#1B6BB0;color:#fff}.btn-xs.pri:hover{background:#155e9a}
+.btn-xs.sec{background:#f1f5f9;color:#475569}.btn-xs.sec:hover{background:#e2e8f0}
+.btn-xs.sml{background:#fef3c7;color:#92400e}.btn-xs.sml:hover{background:#fde68a}
+.tab-st{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px;vertical-align:middle;flex-shrink:0}
+.tab-st.ok{background:#34d399}.tab-st.warn{background:#fbbf24}.tab-st.err{background:#f87171}
+.arch-sub-fila{display:grid;grid-template-columns:200px 1fr 120px 110px auto;align-items:center;gap:12px;padding:6px 0 6px 16px;border-bottom:1px solid #f8fafc;font-size:12px;color:#475569}
+.arch-grupo-header{font-size:11px;font-weight:700;color:#1B6BB0;text-transform:uppercase;letter-spacing:.06em;padding:14px 0 4px;display:flex;align-items:center;gap:6px;border-top:1px solid #e2e8f0;margin-top:4px}
+.arch-grupo-header:first-child{border-top:none;margin-top:0}
+.arch-activo-badge{font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:10px;font-weight:700;margin-left:5px}
+.val-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.val-row:last-child{border-bottom:none}
+.val-icono{font-size:15px;flex-shrink:0;width:22px;text-align:center}
+.val-seccion{width:150px;font-weight:500;color:#1e293b;flex-shrink:0}
+.val-estado{flex:1;font-size:12px}
+input[type=file].arch-input{display:none}
+@media(max-width:700px){.arch-fila,.arch-sub-fila{grid-template-columns:1fr 1fr;}.arch-secciones,.arch-fecha{display:none}}
+</style>
+</head>
+<body>
+
+<!-- ══ MODAL GEMINI ══ -->
+<div id="gemini-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(600px,95vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="#1B6BB0"/></svg>
+        <div>
+          <div style="font-weight:700;font-size:15px;color:#1e293b">Director Financiero IA</div>
+          <div style="font-size:11px;color:#94a3b8">Powered by Gemini · Datos reales de la obra</div>
+        </div>
+      </div>
+      <button onclick="cerrarGemini()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;line-height:1">✕</button>
+    </div>
+    <div id="gemini-chat" style="flex:1;overflow-y:auto;padding:16px 20px;min-height:200px;max-height:50vh"></div>
+    <div style="padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;gap:8px">
+      <input id="gemini-input" type="text" placeholder="Pregunta sobre esta obra... (ej: ¿Cómo está el margen?)" onkeydown="if(event.key==='Enter')preguntarGemini()"
+        style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:13px;outline:none">
+      <button onclick="preguntarGemini()" style="background:#1B6BB0;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div id="login-overlay">
+  <div id="login-box">
+    <div class="logo">WALLER</div>
+    <div class="sub">Control de Obra</div>
+    <input type="text" id="l-user" placeholder="Usuario">
+    <input type="password" id="l-pass" placeholder="Contraseña">
+    <button onclick="doLogin()">Entrar</button>
+    <div class="err" id="l-err"></div>
+  </div>
+</div>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="rgba(255,255,255,0.2)"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="18" font-weight="700" fill="white">W</text></svg>
+    Waller <span class="badge">Control de Obra</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.15);border-radius:8px;padding:5px 10px;min-width:220px;max-width:320px">
+    <i class="ti ti-building" style="opacity:0.8;flex-shrink:0"></i>
+    <select id="obraSelector" onchange="cambiarObra()" style="background:transparent;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;outline:none;flex:1;min-width:0">
+      
+      <option value="511" style="background:#1B6BB0" disabled>Hidalma · CC 511 (sin datos)</option>
+      <option value="520" style="background:#1B6BB0" disabled>Zendera · CC 520 (sin datos)</option>
+      <option value="518" style="background:#1B6BB0" disabled>IU Life · CC 518 (sin datos)</option>
+      <option value="517" style="background:#1B6BB0" disabled>Artwalk · CC 517 (sin datos)</option>
+    </select>
+  </div>
+  <div class="navbar-right">
+    <a href="/obras.html"><i class="ti ti-building"></i> Portafolio</a>
+    <a href="/cargar.html"><i class="ti ti-upload"></i> Cargar</a>
+    <a href="/portal.html"><i class="ti ti-layout-grid"></i> Portal</a>
+    <button onclick="abrirGemini()" title="Consultar Director Financiero IA" style="background:linear-gradient(135deg,#4285f4,#9b59b6);border:none;border-radius:8px;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(66,133,244,0.4)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="white"/></svg>
+      Gemini
+    </button>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="project-bar">
+    <div>
+      <h2 id="title-obra"><i class="ti ti-building" style="font-size:18px;vertical-align:-2px"></i> Cargando...</h2>
+      <div class="meta">
+        <span id="meta-cliente"><i class="ti ti-user"></i> —</span>
+        <span id="meta-inicio"><i class="ti ti-calendar"></i> —</span>
+        <span id="meta-fin"><i class="ti ti-calendar-due"></i> —</span>
+        <span id="meta-niveles"><i class="ti ti-map-pin"></i> —</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('resumen')"><i class="ti ti-dashboard" style="margin-right:4px"></i>Resumen<span class="tab-st" id="tst-resumen"></span></div>
+    <div class="tab" onclick="switchTab('variaciones')"><i class="ti ti-chart-bar" style="margin-right:4px"></i>Variaciones<span class="tab-st" id="tst-variaciones"></span></div>
+    <div class="tab" onclick="switchTab('cronograma')"><i class="ti ti-calendar-stats" style="margin-right:4px"></i>Cronograma<span class="tab-st" id="tst-cronograma"></span></div>
+    <div class="tab" onclick="switchTab('niveles')"><i class="ti ti-layers-difference" style="margin-right:4px"></i>Por nivel<span class="tab-st" id="tst-niveles"></span></div>
+    <div class="tab" onclick="switchTab('evm')"><i class="ti ti-trending-up" style="margin-right:4px"></i>Valor ganado<span class="tab-st" id="tst-evm"></span></div>
+    <div class="tab" onclick="switchTab('estimaciones')"><i class="ti ti-receipt" style="margin-right:4px"></i>Estimaciones<span class="tab-st" id="tst-estimaciones"></span></div>
+    <div class="tab" onclick="switchTab('cambios')"><i class="ti ti-arrows-exchange" style="margin-right:4px"></i>Cambios<span class="tab-st" id="tst-cambios"></span></div>
+    <div class="tab" onclick="switchTab('flujocaja')"><i class="ti ti-cash" style="margin-right:4px"></i>Flujo de Caja<span class="tab-st" id="tst-flujocaja"></span></div>
+    <div class="tab" onclick="switchTab('edoresultados')"><i class="ti ti-report-analytics" style="margin-right:4px"></i>Estado de Resultados<span class="tab-st" id="tst-edoresultados"></span></div>
+    <div class="tab" onclick="switchTab('contrato')"><i class="ti ti-file-description" style="margin-right:4px"></i>Contrato<span class="tab-st" id="tst-contrato"></span></div>
+    <div class="tab" onclick="switchTab('bitacora')"><i class="ti ti-notebook" style="margin-right:4px"></i>Bitácora<span class="tab-st" id="tst-bitacora"></span></div>
+    <div class="tab" onclick="switchTab('cargar')"><i class="ti ti-upload" style="margin-right:4px"></i>Archivos</div>
+  </div>
+
+  <div class="section active" id="s-resumen">
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="label"><i class="ti ti-file-invoice"></i> Contrato</div><div class="value" id="kpi-contrato">—</div><div class="sub" id="kpi-contrato-sub">Sin IVA</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-coin"></i> Costo interno cotizado</div><div class="value" id="kpi-cotizado">—</div><div class="sub" id="kpi-cotizado-sub">—</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-credit-card-pay"></i> Costos ejercidos</div><div class="value" id="kpi-egresado">—</div><div class="sub" id="kpi-egresado-sub">Corte más reciente</div></div>
+      <div class="kpi green"><div class="label"><i class="ti ti-receipt"></i> Facturado a cliente</div><div class="value" id="kpi-facturado">—</div><div class="sub" id="kpi-facturado-sub">—</div></div>
+      <div class="kpi red"><div class="label"><i class="ti ti-arrows-exchange"></i> Próxima estimación</div><div class="value" id="kpi-proxest">—</div><div class="sub" id="kpi-proxest-sub">Por facturar</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-box"></i> M² instalados</div><div class="value" id="kpi-m2">—</div><div class="sub" id="kpi-m2-sub">—</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-package"></i> Retención acumulada</div><div class="value" id="kpi-retencion">—</div><div class="sub">5% · Se libera al cierre</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-calendar-time"></i> Por ejercer</div><div class="value" id="kpi-porejerce">—</div><div class="sub" id="kpi-porejerce-sub">Pendiente de facturar</div></div>
+    </div>
+    <div class="chart-grid">
+      <div class="chart-card"><h3><i class="ti ti-chart-donut" style="color:#1B6BB0"></i> Distribución del egreso</h3><div class="chart-wrap"><canvas id="donut-egreso"></canvas></div></div>
+      <div class="chart-card"><h3><i class="ti ti-chart-bar" style="color:#1B6BB0"></i> Egresado vs presupuesto</h3><div class="chart-wrap"><canvas id="bar-categorias"></canvas></div></div>
+    </div>
+    <div class="table-card">
+      <h3><i class="ti ti-list-check" style="color:#1B6BB0;margin-right:5px"></i> Estado de resultados — <span id="title-obra">Obra</span></h3>
+      <table>
+        <thead><tr><th>Concepto</th><th>Cotizado</th><th>% contrato</th><th>Costos ejercidos</th><th>% ejecutado</th></tr></thead>
+        <tbody id="tbody-edo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="s-variaciones">
+    <div id="variaciones-alertas"></div>
+    <div class="table-card">
+      <h3><i class="ti ti-arrows-exchange" style="color:#1B6BB0;margin-right:5px"></i> Variaciones presupuestales por partida</h3>
+      <table>
+        <thead><tr><th>Cuenta</th><th>Concepto</th><th>Presupuestado</th><th>Egresado</th><th>Variación</th><th>% Ejec.</th><th>Estado</th></tr></thead>
+        <tbody id="tbody-variaciones"><tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de variaciones.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="chart-card"><h3><i class="ti ti-chart-bar" style="color:#1B6BB0"></i> Egresado vs presupuesto</h3><div class="chart-wrap" style="height:280px"><canvas id="bar-variaciones"></canvas></div></div>
+  </div>
+
+  <div class="section" id="s-cronograma">
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+      <div class="kpi"><div class="label"><i class="ti ti-calendar"></i> Inicio obra</div><div class="value" style="font-size:18px" id="cron-inicio">—</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-calendar-due"></i> Fin prog. interno</div><div class="value" style="font-size:18px" id="cron-fin-interno">—</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-calendar-event"></i> Fin contrato</div><div class="value" style="font-size:18px" id="cron-fin-contrato">—</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-clock"></i> Semanas totales</div><div class="value" id="cron-semanas">—</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-box"></i> M² totales</div><div class="value" id="cron-m2-total">—</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-run"></i> Ritmo necesario</div><div class="value" id="cron-ritmo">—</div></div>
+    </div>
+    <div class="chart-card" style="margin-bottom:1.5rem"><h3><i class="ti ti-chart-area" style="color:#1B6BB0"></i> Curva S — Programado vs real</h3><div class="chart-wrap" style="height:260px"><canvas id="curva-s"></canvas></div></div>
+    <div class="table-card">
+      <h3><i class="ti ti-calendar-stats" style="color:#1B6BB0;margin-right:5px"></i> Programa por nivel</h3>
+      <table>
+        <thead><tr><th>Nivel</th><th>M² programados</th><th>M² instalados</th><th>% avance</th></tr></thead>
+        <tbody id="tbody-cron-niveles"><tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de cronograma.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="s-niveles">
+    <div class="chart-card" style="margin-bottom:1.5rem"><h3><i class="ti ti-layers-difference" style="color:#1B6BB0"></i> M² instalados por nivel</h3><div class="chart-wrap" style="height:320px"><canvas id="bar-niveles"></canvas></div></div>
+    <div class="table-card">
+      <h3><i class="ti ti-list" style="color:#1B6BB0;margin-right:5px"></i> Detalle por nivel</h3>
+      <table>
+        <thead><tr><th>Nivel</th><th>M² programados</th><th>M² instalados</th><th>% avance</th><th>Tipo</th></tr></thead>
+        <tbody id="tbody-niveles-detalle"><tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de niveles.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="s-evm">
+    <div class="diag amarillo" id="evm-diag"><h4 id="evm-diag-title">Para activar EVM conecta el avance diario en Centro de Carga</h4><p id="evm-diag-body"></p><ul id="evm-diag-lista"></ul></div>
+    <div class="evm-grid">
+      <div class="evm-card"><div class="evm-label">Presupuesto total de la obra</div><div class="evm-val" id="evm-bac">—</div><div class="evm-hint">El costo total acordado al inicio del proyecto</div></div>
+      <div class="evm-card"><div class="evm-label">Avance físico instalado</div><div class="evm-val" id="evm-pct-m2">—</div><div class="evm-hint" id="evm-pct-m2-hint">M² instalados del total del contrato</div></div>
+      <div class="evm-card warn"><div class="evm-label">Trabajo ejecutado en valor (EV)</div><div class="evm-val" id="evm-ev">—</div><div class="evm-hint" id="evm-ev-hint">Valor económico del avance físico real instalado</div></div>
+      <div class="evm-card"><div class="evm-label">Lo que realmente se ha gastado (AC)</div><div class="evm-val" id="evm-ac">—</div><div class="evm-hint" id="evm-ac-hint">Gasto real acumulado según ContPAQ</div></div>
+    </div>
+    <div class="idx-grid">
+      <div class="idx-card">
+        <h4>Eficiencia del costo (CPI) <span class="idx-objetivo">objetivo: 1.00</span></h4>
+        <div class="idx-val" id="evm-cpi">—</div>
+        <div class="idx-desc" id="evm-cpi-desc">Por cada peso gastado se genera este valor instalado. Mayor a 1.00 = bajo presupuesto · Menor a 1.00 = sobre presupuesto.</div>
+      </div>
+      <div class="idx-card">
+        <h4>Costo estimado al terminar (EAC) <span class="idx-objetivo">objetivo: ≤ BAC</span></h4>
+        <div class="idx-val" id="evm-eac">—</div>
+        <div class="idx-desc" id="evm-eac-desc">Estimación de costo total al terminar al ritmo actual de CPI.</div>
+      </div>
+    </div>
+    <div class="chart-card" style="margin-bottom:1.5rem"><h3><i class="ti ti-chart-area" style="color:#1B6BB0"></i> Curva de valor ganado (EV · AC)</h3><div class="chart-wrap" style="height:260px"><canvas id="evm-chart"></canvas></div></div>
+    <div class="table-card">
+      <h3><i class="ti ti-calculator" style="color:#1B6BB0;margin-right:5px"></i> Proyecciones de cierre</h3>
+      <table>
+        <thead><tr><th>Indicador</th><th>Valor</th><th>Significado</th></tr></thead>
+        <tbody id="evm-proyecciones">
+          <tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:1rem">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ ESTIMACIONES ══ -->
+  <div class="section" id="s-estimaciones">
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="label"><i class="ti ti-file-invoice"></i> Contrato total cliente</div><div class="value" id="est-kpi-contrato">—</div><div class="sub">Sin IVA</div></div>
+      <div class="kpi green"><div class="label"><i class="ti ti-receipt"></i> Total facturado</div><div class="value" id="est-kpi-facturado">—</div><div class="sub" id="est-kpi-facturado-sub">—</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-clock-dollar"></i> Saldo por facturar</div><div class="value" id="est-kpi-saldo">—</div><div class="sub">Trabajo pendiente de estimar</div></div>
+      <div class="kpi red"><div class="label"><i class="ti ti-arrows-exchange"></i> Flujo neto acumulado</div><div class="value" id="est-kpi-flujo">—</div><div class="sub">Facturado − Costos ejercidos</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-lock"></i> Retención acumulada (5%)</div><div class="value" id="est-kpi-retencion">—</div><div class="sub">Se libera al cierre de obra</div></div>
+    </div>
+    <div class="info-box" id="est-infobox">Los datos de estimaciones se cargan desde el Centro de Carga.</div>
+    <div class="table-card">
+      <h3><i class="ti ti-receipt" style="color:#1B6BB0;margin-right:5px"></i> Registro de estimaciones al cliente</h3>
+      <table>
+        <thead><tr><th>#</th><th>Período</th><th class="num">Esta estimación</th><th class="num">Acumulado</th><th class="num">Retención (5%)</th><th class="num">Neto a pagar</th><th>M² esta est.</th><th>M² acum.</th></tr></thead>
+        <tbody id="tbody-estimaciones"><tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem;font-size:13px">Sin estimaciones registradas. Súbelas en el Centro de Carga.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ CAMBIOS ══ -->
+  <div class="section" id="s-cambios">
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="label"><i class="ti ti-file-invoice"></i> Contrato original</div><div class="value" id="cambios-contrato-orig">—</div><div class="sub" id="cambios-contrato-sub">Sin IVA · Cliente</div></div>
+      <div class="kpi red"><div class="label"><i class="ti ti-plus"></i> Extras aprobados</div><div class="value" id="cambios-extras">$0</div><div class="sub">Sin conceptos extra aún</div></div>
+      <div class="kpi green"><div class="label"><i class="ti ti-minus"></i> Deductivos aprobados</div><div class="value" id="cambios-deductivos">$0</div><div class="sub">Sin deductivos aún</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-file-check"></i> Presupuesto autorizado actual</div><div class="value" id="cambios-presup-auth">—</div><div class="sub">Igual al contrato base</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-clock"></i> Cambios en negociación</div><div class="value" id="cambios-negociacion">0</div><div class="sub">Sin cambios pendientes</div></div>
+    </div>
+    <div class="info-box"><strong>¿Para qué sirve este módulo?</strong> Registra cada concepto extra o deductivo negociado con el cliente. Los cambios aprobados actualizan el presupuesto autorizado. Los que están en negociación representan ingresos o riesgos no confirmados.</div>
+    <div class="table-card">
+      <h3><i class="ti ti-arrows-exchange" style="color:#1B6BB0;margin-right:5px"></i> Registro de cambios de alcance</h3>
+      <table>
+        <thead><tr><th>#</th><th>Descripción</th><th>Fecha</th><th>Tipo</th><th class="num">Monto</th><th>Estado</th><th class="num">Impacto sobre contrato</th></tr></thead>
+        <tbody id="tbody-cambios">
+          <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Sin cambios de alcance registrados. Usa este módulo para documentar cualquier concepto extra o deductivo con el cliente.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ FLUJO DE CAJA ══ -->
+  <div class="section" id="s-flujocaja">
+    <div id="flujoStatusBanner" style="border-radius:10px;padding:14px 18px;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px;background:#fef2f2;border-left:5px solid #dc2626">
+      <span style="font-size:1.4rem" id="flujo-banner-icono">⏳</span>
+      <div>
+        <strong style="font-size:15px" id="flujo-banner-titulo">Cargando datos…</strong>
+        <p style="font-size:13px;margin-top:3px" id="flujo-banner-texto"></p>
+      </div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi red"><div class="label"><i class="ti ti-trending-down"></i> Flujo neto acumulado</div><div class="value" id="flujo-kpi-neto">—</div><div class="sub" id="flujo-kpi-neto-sub">Egresado − Facturado</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-credit-card-pay"></i> Total egresado</div><div class="value" id="flujo-kpi-egresado">—</div><div class="sub" id="flujo-kpi-egresado-sub">Según ContPAQ</div></div>
+      <div class="kpi green"><div class="label"><i class="ti ti-receipt"></i> Total facturado</div><div class="value" id="flujo-kpi-facturado">—</div><div class="sub" id="flujo-kpi-facturado-sub">Estimaciones al cliente</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-coin"></i> Costo de financiar el gap</div><div class="value" id="flujo-kpi-costo-gap">—</div><div class="sub" id="flujo-kpi-costo-gap-sub">Gap × TIIE ~11% anual / 12</div></div>
+    </div>
+    <div class="chart-card" style="margin-bottom:1.5rem">
+      <h3><i class="ti ti-chart-line" style="color:#1B6BB0"></i> Flujo acumulado — Egresado vs Facturado</h3>
+      <div class="chart-wrap" style="height:280px"><canvas id="flujo-comparativo"></canvas></div>
+    </div>
+    <div class="table-card">
+      <h3><i class="ti ti-table" style="color:#1B6BB0"></i> Detalle de estimaciones vs egresos</h3>
+      <table>
+        <thead><tr><th>Período</th><th class="num">Egresado acum.</th><th class="num">Facturado acum.</th><th class="num">Gap</th><th>Estado</th></tr></thead>
+        <tbody id="tbody-flujo-detalle"><tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de flujo.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="table-card" style="border-left:4px solid #d97706">
+      <h3><i class="ti ti-bulb" style="color:#d97706"></i> Alertas de flujo</h3>
+      <div id="flujo-alertas"><p style="color:#94a3b8;font-size:13px;padding:1rem">Sin alertas — carga estimaciones para activar el análisis.</p></div>
+    </div>
+  </div>
+
+  <!-- ══ ESTADO DE RESULTADOS ══ -->
+  <div class="section" id="s-edoresultados">
+
+    <!-- Banner alerta -->
+    <div id="edoBanner" style="border-radius:10px;padding:14px 18px;margin-bottom:1.5rem;display:flex;align-items:center;gap:12px;background:#f0fdf4;border-left:5px solid #059669">
+      <span style="font-size:1.4rem" id="edoBannerIcon">📊</span>
+      <div>
+        <strong style="font-size:15px" id="edoBannerTitulo">Resultado del período</strong>
+        <p style="font-size:13px;margin-top:3px" id="edoBannerTexto">Cargando datos...</p>
+      </div>
+    </div>
+
+    <!-- P&L Estado de Resultados -->
+    <div class="chart-card" style="margin-bottom:1.5rem;max-width:700px">
+      <h3 style="margin-bottom:1.2rem"><i class="ti ti-report-analytics" style="color:#1B6BB0"></i> Estado de Resultados — <span id="edo-nombre-obra">CC 519</span></h3>
+
+      <!-- INGRESOS -->
+      <div style="margin-bottom:1rem">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Ingresos</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="color:#475569;font-size:13px">Valor del contrato</span>
+          <span style="font-weight:600;color:#1e293b;font-size:13px" id="edo-r-contrato">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="color:#475569;font-size:13px">Ingresos reconocidos por avance <span id="edo-r-avance-pct" style="color:#94a3b8;font-size:11px"></span></span>
+          <span style="font-weight:700;color:#059669;font-size:14px" id="edo-r-ingresos">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:2px solid #e2e8f0">
+          <span style="color:#475569;font-size:13px">Pendiente por reconocer</span>
+          <span style="color:#94a3b8;font-size:13px" id="edo-r-pendiente">—</span>
+        </div>
+      </div>
+
+      <!-- COSTOS -->
+      <div style="margin-bottom:1rem">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Costos directos incurridos</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="color:#475569;font-size:13px">Egresado acumulado (ContPAQ)</span>
+          <span style="font-weight:700;color:#dc2626;font-size:14px" id="edo-r-costos">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:2px solid #e2e8f0">
+          <span style="color:#475569;font-size:13px">Costo estimado a completar</span>
+          <span style="color:#94a3b8;font-size:13px" id="edo-r-costo-completar">—</span>
+        </div>
+      </div>
+
+      <!-- UTILIDAD -->
+      <div style="margin-bottom:1rem">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Resultado</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:8px;background:#f8fafc;border-left:4px solid #1B6BB0;margin-bottom:6px">
+          <span style="font-weight:600;color:#1e293b;font-size:14px">Utilidad bruta reconocida</span>
+          <span style="font-weight:700;font-size:16px" id="edo-r-utilidad">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="color:#475569;font-size:13px">Margen bruto %</span>
+          <span style="font-weight:600;font-size:13px" id="edo-r-margen-pct">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="color:#475569;font-size:13px">Retención acumulada (5%)</span>
+          <span style="color:#d97706;font-weight:600;font-size:13px" id="edo-r-retencion">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:8px;background:#f0fdf4;border-left:4px solid #059669;margin-top:6px">
+          <span style="font-weight:600;color:#065f46;font-size:14px">Utilidad neta (después de retención)</span>
+          <span style="font-weight:700;font-size:16px;color:#059669" id="edo-r-utilidad-neta">—</span>
+        </div>
+      </div>
+
+      <!-- POSICIÓN COBRO -->
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#94a3b8;text-transform:uppercase;margin-bottom:6px">Posición de cobro</div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9">
+          <span style="color:#475569;font-size:13px">Facturado al cliente (estimaciones)</span>
+          <span style="font-weight:600;color:#1e293b;font-size:13px" id="edo-r-facturado">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0">
+          <span style="color:#475569;font-size:13px">Por facturar (saldo pendiente)</span>
+          <span style="font-weight:600;color:#1B6BB0;font-size:13px" id="edo-r-por-facturar">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón Gemini -->
+    <div style="margin-top:0.5rem">
+      <button onclick="abrirGemini()" style="background:linear-gradient(135deg,#4285f4,#9b59b6);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(66,133,244,0.4)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="white"/></svg>
+        Analizar con Director Financiero IA
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ══ CONTRATO ══ -->
+  <div class="section" id="s-contrato">
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="label"><i class="ti ti-file-invoice"></i> Monto del contrato</div><div class="value" id="cont-kpi-monto">—</div><div class="sub">Sin IVA · Precio fijo garantizado</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-cash"></i> Anticipo pactado (15%)</div><div class="value" id="cont-kpi-anticipo">—</div><div class="sub">15% del contrato · Una sola exhibición</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-lock"></i> Retención por estimación</div><div class="value">5%</div><div class="sub">Fondo de garantía · Se libera al cierre</div></div>
+      <div class="kpi red"><div class="label"><i class="ti ti-alert-triangle"></i> Penalización por día de retraso</div><div class="value" id="cont-kpi-pendia">—</div><div class="sub" id="cont-kpi-pendia-sub">0.25%/día · Tope 15%</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-shield-check"></i> Garantía de obra</div><div class="value">3 años</div><div class="sub">Desde la fecha de entrega final</div></div>
+      <div class="kpi amber"><div class="label"><i class="ti ti-trending-up"></i> Mora del cliente (si no paga)</div><div class="value">1.5%/mes</div><div class="sub">Sobre saldos insolutos · Automático</div></div>
+    </div>
+
+    <div id="contrato-dinamico"></div>
+  </div>
+
+  <!-- ══ BITÁCORA ══ -->
+  <div class="section" id="s-bitacora">
+    <div class="bit-form">
+      <h3 style="font-size:14px;font-weight:600;color:#3D4550;margin-bottom:1rem"><i class="ti ti-plus" style="color:#1B6BB0;margin-right:5px"></i> Nueva entrada de bitácora</h3>
+      <div class="bit-form-grid">
+        <div><label class="bit-label">Fecha</label><input type="date" id="bitFecha" class="bit-input"></div>
+        <div><label class="bit-label">Registrado por</label><input type="text" id="bitAutor" class="bit-input" placeholder="Residente / Supervisor"></div>
+      </div>
+      <div style="margin-bottom:10px"><label class="bit-label">Transcripción de la bitácora</label>
+        <textarea id="bitTexto" class="bit-textarea" placeholder="Escribe o pega aquí el texto transcrito de la bitácora física..."></textarea>
+      </div>
+      <div style="margin-top:10px">
+        <label class="bit-label">Foto de bitácora física (opcional)</label>
+        <label for="bitFoto"><div class="bit-foto-zone"><i class="ti ti-camera" style="font-size:28px;color:#94a3b8;display:block;margin-bottom:6px"></i><p style="font-size:13px;color:#64748b">Toca para seleccionar foto · JPG, PNG</p><p style="font-size:11px;color:#94a3b8;margin-top:4px">La imagen se guarda localmente. Transcripción automática con IA — próximamente.</p></div></label>
+        <input type="file" id="bitFoto" accept="image/*" onchange="previsualizarFoto(this)">
+        <img id="bitPreview" class="bit-preview" alt="Vista previa">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-primary" onclick="guardarBitacora()"><i class="ti ti-check"></i> Guardar entrada</button>
+        <button class="btn-primary" style="background:#6b7280" onclick="limpiarBitacoraForm()"><i class="ti ti-x"></i> Cancelar</button>
+      </div>
+      <div id="bitResult" style="display:none;margin-top:10px;font-size:13px;color:#059669;background:#f0fdf4;border-radius:7px;padding:10px"></div>
+    </div>
+
+    <input type="text" class="bit-search" id="bitBuscador" placeholder="🔍 Buscar por fecha, nivel, texto..." oninput="filtrarBitacora()">
+    <div id="bitLista"></div>
+  </div>
+
+  <div class="section" id="s-cargar">
+    <div style="text-align:center;padding:3rem 1rem">
+      <i class="ti ti-files" style="font-size:3rem;color:#cbd5e1;display:block;margin-bottom:1rem"></i>
+      <div style="font-size:18px;font-weight:700;color:#3D4550;margin-bottom:8px">Gestión de archivos</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:1.5rem;max-width:420px;margin-left:auto;margin-right:auto">Sube, revisa y valida todos los archivos de la obra en el Centro de Carga.</div>
+      <a id="link-cargar" href="/cargar.html" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;padding:12px 28px;border-radius:9px;font-size:14px">
+        <i class="ti ti-upload"></i> Ir al Centro de Carga
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Waller Paneles de Concreto · Control de Obra · v1.0</div>
+
+<script>
+// ─── Helpers ───────────────────────────────────────────────────────────────
+const fmt  = n => '$' + Math.round(n).toLocaleString('es-MX');
+const fmtK = n => { const a=Math.abs(n); return (n<0?'-':'')+( a>=1e6?'$'+(a/1e6).toFixed(2)+'M' : a>=1e3?'$'+Math.round(a/1e3)+'K' : fmt(n) ); };
+const set  = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+const pill = (pct, max=100) => {
+  if(pct===null||pct===undefined) return '<span class="pill morado">Sin datos</span>';
+  const p=Math.round(pct*100/max);
+  const cls = p>=80?'rojo':p>=60?'amarillo':'verde';
+  return `<span class="pill ${cls}">${p}%</span>`;
+};
+
+// ─── Estado global ─────────────────────────────────────────────────────────
+let OBRA_DATA = null;
+let MONTO_CONTRATO = 4721177;
+let chartsInited = false;
+let flujoChartInited = false;
+
+// ─── Carga de datos desde API ───────────────────────────────────────────────
+async function loadData() {
+  CC_ACTUAL = new URLSearchParams(window.location.search).get('cc');
+  if (!CC_ACTUAL) {
+    const main = document.querySelector('.main');
+    if (main) main.innerHTML = `<div style="padding:4rem;text-align:center">
+      <i class="ti ti-alert-circle" style="font-size:3rem;color:#dc2626;display:block;margin-bottom:1rem"></i>
+      <h2 style="color:#dc2626;margin-bottom:8px">No se especificó obra</h2>
+      <p style="color:#64748b">Agrega <code>?cc=XXX</code> a la URL. Ejemplo: <a href="?cc=519" style="color:#1B6BB0">/obra.html?cc=519</a></p>
+    </div>`;
+    return;
+  }
+  try {
+    const [respProyecto, respArchivos] = await Promise.all([
+      fetch('/api/proyectos/' + CC_ACTUAL),
+      fetch('/api/archivos/' + CC_ACTUAL)
+    ]);
+    if (!respProyecto.ok) throw new Error('Obra CC ' + CC_ACTUAL + ' no encontrada');
+    OBRA_DATA = await respProyecto.json();
+    MONTO_CONTRATO = OBRA_DATA.montoContrato || MONTO_CONTRATO;
+    if (respArchivos.ok) ARCHIVOS_SERVER = await respArchivos.json();
+    renderDashboard(OBRA_DATA);
+  } catch(e) {
+    const main = document.querySelector('.main');
+    if (main) main.innerHTML = `<div style="padding:4rem;text-align:center">
+      <i class="ti ti-alert-circle" style="font-size:3rem;color:#dc2626;display:block;margin-bottom:1rem"></i>
+      <h2 style="color:#dc2626;margin-bottom:8px">Error al cargar la obra</h2>
+      <p style="color:#64748b">${e.message}</p>
+    </div>`;
+    console.error('loadData error:', e);
+    return;
+  }
+  setTimeout(initCharts, 100);
+  initBitacora();
+  poblarSelector();
+  const lnk = document.getElementById('link-cargar');
+  if (lnk) lnk.href = '/cargar.html?cc=' + CC_ACTUAL;
+  await cargarArchivosServidor(CC_ACTUAL);
+  validarCobertura();
+}
+
+async function poblarSelector() {
+  try {
+    const resp = await fetch('/api/proyectos');
+    if (!resp.ok) return;
+    const obras = await resp.json();
+    const sel = document.getElementById('obraSelector');
+    sel.innerHTML = '';
+    obras.sort((a,b) => (a.cc||'').localeCompare(b.cc||'')).forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.cc;
+      opt.style.background = '#1B6BB0';
+      opt.selected = o.cc === CC_ACTUAL;
+      opt.textContent = (o.nombre || 'Obra ' + o.cc) + ' · CC ' + o.cc;
+      sel.appendChild(opt);
+    });
+    // Forzar valor correcto en el select
+    sel.value = CC_ACTUAL;
+  } catch(e) {}
+}
+
+function cambiarObra() {
+  const cc = document.getElementById('obraSelector').value;
+  window.location.search = '?cc=' + cc;
+}
+
+// ─── Render dashboard ──────────────────────────────────────────────────────
+function renderDashboard(d) {
+  const nombre = d.nombre || ('Obra ' + d.cc);
+  const monto  = d.montoContrato || 0;
+  const egresado = d.totalEgresado || 0;
+  const ests   = d.estimaciones || [];
+  const ultima = ests[ests.length - 1];
+  const facturado = ultima ? ultima.acumActual : 0;
+  const retencion = ests.reduce((s,e) => s + (e.retencionEsta||0), 0);
+  const m2Acum = ultima ? ultima.m2Acum : 0;
+  const totalM2 = (d.cronograma && d.cronograma.totalM2) || 0;
+  const pctM2  = totalM2 > 0 ? (m2Acum / totalM2 * 100).toFixed(1) : '—';
+  const porEjerce = ultima ? ultima.porEjercer : (monto - facturado);
+
+  renderPanelArchivos();
+  validarCobertura();
+
+  // Header
+  set('title-obra', nombre);
+  const h2 = document.querySelector('.project-bar h2');
+  if (h2) h2.innerHTML = `<i class="ti ti-building" style="font-size:18px;vertical-align:-2px"></i> ${nombre} — CC ${d.cc}`;
+
+  // Meta del header — cliente, fechas, niveles
+  const metaCliente = document.getElementById('meta-cliente');
+  const metaInicio  = document.getElementById('meta-inicio');
+  const metaFin     = document.getElementById('meta-fin');
+  const metaNiveles = document.getElementById('meta-niveles');
+  const fmtFecha = f => { if(!f) return '—'; try{ const [y,m,d2]=f.split('-'); return `${d2}/${m}/${y}`; }catch(e){ return f; } };
+  if (metaCliente) metaCliente.innerHTML = `<i class="ti ti-user"></i> ${d.cliente || d.contrato?.campos?.razonSocialCliente?.valor || 'Sin cliente'}`;
+  if (metaInicio)  metaInicio.innerHTML  = `<i class="ti ti-calendar"></i> Inicio: ${fmtFecha(d.fechaInicio)}`;
+  if (metaFin)     metaFin.innerHTML     = `<i class="ti ti-calendar-due"></i> Fin: ${fmtFecha(d.fechaFin)}`;
+  if (metaNiveles) metaNiveles.innerHTML = `<i class="ti ti-map-pin"></i> ${d.niveles ? d.niveles + ' niveles' : (d.cronograma?.m2PorNivel ? Object.keys(d.cronograma.m2PorNivel).length + ' niveles' : '—')}`;
+
+  // KPIs Resumen
+  set('kpi-contrato', fmtK(monto));
+  set('kpi-contrato-sub', 'Sin IVA · ' + (d.contrato?.cliente || 'Cliente'));
+  set('kpi-egresado', fmtK(egresado));
+  set('kpi-egresado-sub', 'Actualizado ' + (d.ultimaActualizacion || '—'));
+  set('kpi-facturado', fmtK(facturado));
+  set('kpi-facturado-sub', ests.length + ' estimación(es)');
+  set('kpi-proxest', fmtK(porEjerce));
+  set('kpi-proxest-sub', 'Por facturar al cliente');
+  set('kpi-m2', Math.round(m2Acum) + ' m²');
+  set('kpi-m2-sub', 'de ' + Math.round(totalM2) + ' m² · ' + pctM2 + '%');
+  set('kpi-retencion', fmtK(retencion));
+  set('kpi-cotizado', fmtK(monto));
+  set('kpi-cotizado-sub', 'Presupuesto contratado');
+  set('kpi-porejerce', fmtK(monto - facturado));
+  set('kpi-porejerce-sub', 'Sin facturar al cliente');
+
+  // Estado de resultados
+  renderEdoResultados(d);
+  renderVariaciones(d);
+  renderCronograma(d);
+  renderCambios(d);
+
+  // Contexto para Gemini
+  const _k = v => '$' + Math.round(v/1000) + 'K';
+  geminiContexto = {
+    nombreObra: d.nombre || ('Obra ' + d.cc),
+    contrato: _k(monto),
+    egresado: _k(egresado),
+    facturado: _k(facturado),
+    avancePct: d.resumen?.avancePct || (monto > 0 ? (egresado / monto * 100).toFixed(1) : 0),
+    retencion: _k(retencion),
+    partidasSobrecosto: (d.partidasDetalle || []).filter(p => (p.ejercido||p.total||0) > (p.presupuesto||0)).map(p => p.nombre || p.clave).join(', ') || 'ninguna detectada'
+  };
+
+  // Estimaciones tab
+  set('est-kpi-contrato', fmtK(monto));
+  set('est-kpi-facturado', fmtK(facturado));
+  set('est-kpi-facturado-sub', ests.length + ' estimación(es) registradas');
+  set('est-kpi-saldo', fmtK(monto - facturado));
+  const flujoNeto = facturado - egresado;
+  set('est-kpi-flujo', fmtK(flujoNeto));
+  set('est-kpi-retencion', fmtK(retencion));
+  set('est-infobox', flujoNeto >= 0
+    ? `Waller tiene un flujo positivo de ${fmtK(flujoNeto)}. Lo facturado supera lo ejercido.`
+    : `Waller está financiando ${fmtK(Math.abs(flujoNeto))} de la obra. Diferencia entre costos ejercidos (${fmtK(egresado)}) y lo facturado al cliente (${fmtK(facturado)}).`);
+  renderTablaEstimaciones(ests);
+
+  renderEVM(d);
+  renderFlujoCaja(d);
+  renderContrato(d);
+}
+
+function renderEVM(d) {
+  const monto    = d.montoContrato || 0;
+  const egresado = d.totalEgresado || 0;
+  const ests     = d.estimaciones || [];
+
+  // No data: no monto or no avance diario loaded
+  if (!monto || (!egresado && !ests.length)) {
+    const diagEl = document.getElementById('evm-diag');
+    if (diagEl) {
+      diagEl.className = 'diag amarillo';
+      set('evm-diag-title', 'Para activar EVM conecta el avance diario en Centro de Carga');
+      set('evm-diag-body', 'Este módulo requiere: Plan de obra (cronograma), avance diario y datos de ContPAQ.');
+      const lista = document.getElementById('evm-diag-lista');
+      if (lista) lista.innerHTML = '';
+    }
+    return;
+  }
+
+  const ultima   = ests[ests.length - 1];
+  const totalM2  = (d.cronograma && d.cronograma.totalM2) || 0;
+  const m2Acum   = ultima ? ultima.m2Acum : 0;
+  const pctM2    = totalM2 > 0 ? m2Acum / totalM2 : 0;
+  const pctEgr   = monto > 0 ? egresado / monto : 0;
+
+  // Earned Value = avance físico % × BAC
+  const ev  = pctM2 * monto;
+  const ac  = egresado;
+  const bac = monto;
+  const cpi = ac > 0 ? ev / ac : null;
+  const eac = cpi && cpi > 0 ? bac / cpi : null;
+  const vac = eac ? bac - eac : null;
+
+  set('evm-bac', fmtK(bac));
+  set('evm-pct-m2', (pctM2 * 100).toFixed(1) + '%');
+  set('evm-pct-m2-hint', Math.round(m2Acum) + ' m² instalados de ' + Math.round(totalM2) + ' m² totales');
+  set('evm-ev', fmtK(ev));
+  set('evm-ev-hint', 'Avance físico ' + (pctM2 * 100).toFixed(1) + '% × contrato');
+  set('evm-ac', fmtK(ac));
+  set('evm-ac-hint', 'Gasto real · ' + (pctEgr * 100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
+
+  if (cpi !== null) {
+    const cpiEl = document.getElementById('evm-cpi');
+    if (cpiEl) {
+      cpiEl.textContent = cpi.toFixed(2);
+      cpiEl.className = 'idx-val ' + (cpi >= 1 ? 'ok' : cpi >= 0.75 ? 'warn' : 'danger');
+    }
+    set('evm-cpi-desc', `Por cada peso gastado se generan $${cpi.toFixed(2)} de valor instalado. ${cpi >= 1 ? 'Eficiencia óptima.' : 'Se normalizará conforme avance la instalación.'}`);
+  }
+  if (eac !== null) {
+    const eacEl = document.getElementById('evm-eac');
+    if (eacEl) {
+      eacEl.textContent = fmtK(eac);
+      eacEl.className = 'idx-val ' + (eac <= bac ? 'ok' : 'danger');
+    }
+    const vacStr = vac >= 0 ? `Ahorro estimado: ${fmtK(vac)}` : `Excedente estimado: ${fmtK(Math.abs(vac))}`;
+    set('evm-eac-desc', `Al ritmo actual de gasto vs avance. ${vacStr}.`);
+  }
+
+  // Proyecciones table
+  const tbody = document.getElementById('evm-proyecciones');
+  if (tbody && bac > 0) {
+    const etc = eac ? eac - ev : null;
+    const pctEjec = (pctM2 * 100).toFixed(1);
+    const pctFin  = (pctEgr * 100).toFixed(1);
+    tbody.innerHTML = `
+      <tr><td>Costo final estimado al terminar (EAC)</td><td style="font-weight:600;color:${eac && eac > bac ? '#dc2626' : '#059669'}">${eac ? fmtK(eac) : '—'}</td><td>Si el CPI actual (${cpi ? cpi.toFixed(2) : '—'}) se mantiene hasta el cierre</td></tr>
+      <tr><td>Lo que falta por gastar (ETC)</td><td>${etc ? fmtK(etc) : '—'}</td><td>Gasto restante estimado para terminar la obra</td></tr>
+      <tr><td>Ahorro o excedente al terminar (VAC)</td><td style="color:${vac >= 0 ? '#059669' : '#dc2626'}">${vac !== null ? fmtK(vac) : '—'}</td><td>Diferencia entre presupuesto y costo final estimado</td></tr>
+      <tr><td>Avance físico real</td><td>${pctEjec}%</td><td>${Math.round(m2Acum)} m² instalados de ${Math.round(totalM2)} m² totales</td></tr>
+      <tr><td>Avance financiero (egresado)</td><td>${pctFin}%</td><td>${fmtK(egresado)} gastados de ${fmtK(bac)} presupuestados</td></tr>
+    `;
+  }
+
+  // Diagnóstico dinámico
+  const diagEl = document.getElementById('evm-diag');
+  if (diagEl && bac > 0) {
+    const pctEjercido = (pctEgr * 100).toFixed(1);
+    const pctInstalado = (pctM2 * 100).toFixed(1);
+    const malo = pctEgr > pctM2 * 1.3;
+    diagEl.className = 'diag ' + (malo ? 'rojo' : pctEgr > pctM2 ? 'amarillo' : 'verde');
+    const icono = malo ? '🔴' : pctEgr > pctM2 ? '⚠' : '✅';
+    set('evm-diag-title', `${icono} Ritmo de instalación ${malo ? 'muy por debajo del gasto' : 'en seguimiento'}`);
+    set('evm-diag-body', `Se gastó el ${pctEjercido}% del presupuesto pero solo se instaló el ${pctInstalado}% del total. CPI = ${cpi ? cpi.toFixed(2) : '—'}.`);
+    document.getElementById('evm-diag-lista').innerHTML = malo
+      ? '<li>Residente: incrementar ritmo de instalación.</li><li>Dirección: evaluar segunda cuadrilla para recuperar programa.</li><li>Contabilidad: la próxima estimación al cliente debe incluir mano de obra e indirectos.</li>'
+      : '';
+  }
+}
+
+function renderFlujoCaja(d) {
+  const monto    = d.montoContrato || 0;
+  const egresado = d.totalEgresado || 0;
+  const ests     = d.estimaciones || [];
+  const ultima   = ests[ests.length - 1];
+  const facturado = ultima ? ultima.acumActual : 0;
+  const flujoNeto = facturado - egresado;
+  const gap       = Math.abs(flujoNeto);
+  const costoGap  = gap * 0.11 / 12; // TIIE ~11% anual mensualizado
+  const pctEgr    = monto > 0 ? egresado / monto : 0;
+  const pctFact   = monto > 0 ? facturado / monto : 0;
+
+  // Banner
+  const banner = document.getElementById('flujoStatusBanner');
+  if (banner) {
+    if (flujoNeto >= 0) {
+      banner.style.background = '#f0fdf4';
+      banner.style.borderLeftColor = '#059669';
+      set('flujo-banner-icono', '✅');
+      const tituloEl = document.getElementById('flujo-banner-titulo');
+      if (tituloEl) { tituloEl.textContent = 'Flujo positivo'; tituloEl.style.color = '#065f46'; }
+      const textoEl = document.getElementById('flujo-banner-texto');
+      if (textoEl) { textoEl.textContent = `Waller tiene un flujo positivo de ${fmtK(flujoNeto)}. Lo facturado supera lo egresado.`; textoEl.style.color = '#166534'; }
+    } else {
+      banner.style.background = '#fef2f2';
+      banner.style.borderLeftColor = '#dc2626';
+      set('flujo-banner-icono', '🔴');
+      const tituloEl = document.getElementById('flujo-banner-titulo');
+      if (tituloEl) { tituloEl.textContent = 'Waller financiando al cliente'; tituloEl.style.color = '#991b1b'; }
+      const textoEl = document.getElementById('flujo-banner-texto');
+      if (textoEl) { textoEl.textContent = `El egreso acumulado (${fmtK(egresado)}) supera en ${fmtK(gap)} lo facturado (${fmtK(facturado)}). Waller está adelantando capital propio.`; textoEl.style.color = '#7f1d1d'; }
+    }
+  }
+
+  set('flujo-kpi-neto', fmtK(flujoNeto));
+  set('flujo-kpi-neto-sub', 'Facturado − Egresado · ' + (flujoNeto >= 0 ? 'Positivo ✅' : 'Déficit ⚠'));
+  set('flujo-kpi-egresado', fmtK(egresado));
+  set('flujo-kpi-egresado-sub', 'ContPAQ · ' + (pctEgr * 100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
+  set('flujo-kpi-facturado', fmtK(facturado));
+  set('flujo-kpi-facturado-sub', ests.length + ' estimación(es) · ' + (pctFact * 100).toFixed(1) + '% del contrato');
+  set('flujo-kpi-costo-gap', flujoNeto < 0 ? fmt(Math.round(costoGap)) + '/mes' : '$0');
+  set('flujo-kpi-costo-gap-sub', flujoNeto < 0 ? `${fmtK(gap)} × TIIE ~11% anual / 12` : 'Sin costo de financiamiento');
+}
+
+function renderContrato(d) {
+  const monto        = d.montoContrato || 0;
+  const anticipoPct  = d.anticipoPct  ?? d.contrato?.campos?.anticipoPct?.valor  ?? 15;
+  const retencionPct = d.retencionPct ?? d.contrato?.campos?.retencionPct?.valor ?? 5;
+  const anticipo     = monto * (anticipoPct / 100);
+  const penDia       = monto * 0.0025;
+  const tope         = monto * 0.15;
+  const cliente      = d.cliente || d.contrato?.campos?.repLegalCliente?.valor || null;
+  const rfcCliente   = d.rfcCliente || d.contrato?.campos?.rfcCliente?.valor || null;
+  const tipoContrato = d.tipoContrato || d.contrato?.campos?.tipoContrato?.valor || null;
+  const banco        = d.banco || d.contrato?.campos?.banco?.valor || null;
+  const clabe        = d.clabe || d.contrato?.campos?.clabe?.valor || null;
+  const fechaInicio  = d.fechaInicio || d.contrato?.campos?.fechaInicio?.valor || null;
+  const fechaFin     = d.fechaFin || d.contrato?.campos?.fechaTerminacion?.valor || null;
+  const plazo        = d.plazoEjecucionDias || d.contrato?.campos?.plazoEjecucionDias?.valor || null;
+  const fmtFecha     = f => { if(!f) return '—'; try{ const [y,m,dd]=f.split('-'); return `${dd}/${m}/${y}`; }catch(e){ return f; } };
+
+  set('cont-kpi-monto',      monto ? fmtK(monto) : '—');
+  set('cont-kpi-anticipo',   monto ? fmtK(anticipo) : '—');
+  set('cont-kpi-pendia',     monto ? fmt(Math.round(penDia)) : '—');
+  set('cont-kpi-pendia-sub', monto ? `0.25%/día · Tope 15% = ${fmtK(tope)}` : '—');
+  MONTO_CONTRATO = monto || MONTO_CONTRATO;
+
+  const el = document.getElementById('contrato-dinamico');
+  if (!el) return;
+
+  if (!monto) {
+    el.innerHTML = `<div class="info-box" style="background:#fef2f2;border-color:#dc2626;color:#991b1b">
+      Sin contrato cargado — sube el PDF en <a href="/cargar.html?cc=${CC_ACTUAL}" style="color:#1B6BB0;font-weight:600">Centro de Carga</a> para ver los datos del contrato.
+    </div>`;
+    return;
+  }
+
+  const fila = (label, value) =>
+    `<div class="contrato-ficha-item"><span>${label}</span><strong>${value || '—'}</strong></div>`;
+
+  el.innerHTML = `
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3><i class="ti ti-users" style="color:#1B6BB0"></i> Partes y datos del contrato</h3>
+        <div class="contrato-ficha">
+          ${fila('Cliente / Contratante', cliente)}
+          ${fila('RFC del cliente', rfcCliente)}
+          ${fila('Tipo de contrato', tipoContrato)}
+          ${fila('Fecha de inicio', fmtFecha(fechaInicio))}
+          ${fila('Fecha de término', fmtFecha(fechaFin))}
+          ${fila('Plazo de ejecución', plazo ? plazo + ' días' : null)}
+          ${fila('Anticipo pactado', monto ? anticipoPct + '% · ' + fmtK(anticipo) : null)}
+          ${fila('Retención por estimación', retencionPct + '%')}
+          ${fila('Banco de cobro', banco)}
+          ${fila('CLABE interbancaria', clabe)}
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3><i class="ti ti-calculator" style="color:#dc2626"></i> Calculadora de penalización por retraso</h3>
+        <p style="font-size:13px;color:#64748b;margin-bottom:10px">0.25% del contrato por cada día de atraso imputable a Waller, hasta un tope del 15%.</p>
+        <div class="calc-wrap">
+          <div><label class="bit-label">Días de retraso</label><input type="number" id="calcDias" placeholder="ej. 10" min="1" oninput="calcularPenalizacion()"></div>
+          <div style="align-self:flex-end;padding-bottom:1px;color:#64748b;font-size:13px">→</div>
+          <div><label class="bit-label">Penalización</label><div class="calc-resultado" id="calcResultado">—</div></div>
+          <div><label class="bit-label">% del contrato</label><div style="font-size:18px;font-weight:600;color:#64748b" id="calcPct">—</div></div>
+        </div>
+        <div id="calcAlerta" style="margin-top:10px;font-size:12px;color:#92400e;display:none">⚠️ Tope máximo del 15% alcanzado (${fmtK(tope)}). No se puede cobrar más por retraso.</div>
+      </div>
+    </div>`;
+}
+
+function renderEdoResultados(d) {
+  const tbody = document.getElementById('tbody-edo');
+  if (!tbody) return;
+  const partidas = d.partidasDetalle || [];
+  const monto = d.montoContrato || 1;
+  const COLORES = { verde:'verde', amarillo:'amarillo', rojo:'rojo' };
+
+  if (!partidas.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de egresado. Sube el libro auxiliar ContPAQ.</td></tr>';
+    return;
+  }
+
+  let totalCotizado = 0, totalEgresado = 0;
+  const rows = partidas.map(p => {
+    const egresado = p.total || 0;
+    totalEgresado += egresado;
+    const pctEjec = monto > 0 ? egresado / monto * 100 : 0;
+    const cls = pctEjec > 80 ? 'rojo' : pctEjec > 50 ? 'amarillo' : 'verde';
+    return `<tr>
+      <td>${p.nombre || p.clave}</td>
+      <td style="color:#94a3b8">—</td>
+      <td style="color:#94a3b8">—</td>
+      <td style="text-align:right;font-weight:500">${fmt(egresado)}</td>
+      <td><span class="pill ${cls}">${pctEjec.toFixed(1)}%</span></td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = rows + `<tr style="font-weight:600;background:#f8fafc">
+    <td>TOTAL</td><td>—</td><td>—</td>
+    <td style="text-align:right">${fmt(totalEgresado)}</td>
+    <td><span class="pill verde">${(totalEgresado/monto*100).toFixed(1)}%</span></td>
+  </tr>`;
+}
+
+function renderTablaEstimaciones(ests) {
+  const tbody = document.getElementById('tbody-estimaciones');
+  if (!tbody) return;
+  if (!ests || !ests.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin estimaciones. Súbelas en el Centro de Carga.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ests.map(e => {
+    const periodo = e.periodoDesde && e.periodoHasta
+      ? e.periodoDesde.slice(5).replace('-','/') + ' – ' + e.periodoHasta.slice(5).replace('-','/')
+      : '—';
+    return `<tr>
+      <td style="font-weight:600">${e.numero}</td>
+      <td>${periodo}</td>
+      <td class="num" style="font-weight:500">${fmt(e.estaEstimacion)}</td>
+      <td class="num">${fmt(e.acumActual)}</td>
+      <td class="num">${fmt(e.retencionEsta)}</td>
+      <td class="num" style="color:#059669;font-weight:500">${fmt(e.importePagar)}</td>
+      <td>${Math.round(e.m2Esta)} m²</td>
+      <td>${Math.round(e.m2Acum)} m²</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── renderVariaciones ─────────────────────────────────────────────────────
+function renderVariaciones(d) {
+  const tbody = document.getElementById('tbody-variaciones');
+  const alertasDiv = document.getElementById('variaciones-alertas');
+  if (!tbody) return;
+
+  const partidas = d.partidasDetalle || [];
+  const cotizacion = d.cotizacion;
+
+  if (!partidas.length) {
+    const msg = (cotizacion && Array.isArray(cotizacion.secciones) && cotizacion.secciones.length === 0)
+      ? 'Sin cotización cargada — sube el archivo en Centro de Carga'
+      : 'Sin datos de variaciones. Carga el ContPAQ para activar este módulo.';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:1.5rem">${msg}</td></tr>`;
+    if (alertasDiv) alertasDiv.innerHTML = '';
+    return;
+  }
+
+  const alertas = [];
+  tbody.innerHTML = partidas.map(p => {
+    const presup   = p.presupuesto || 0;
+    const ejercido = p.ejercido || p.total || 0;
+    const variacion = presup > 0 ? ejercido - presup : null;
+    const pctEjec   = presup > 0 ? ejercido / presup * 100 : null;
+    const estado    = pctEjec === null ? 'Sin presup.' : pctEjec > 100 ? 'Sobrecosto' : pctEjec > 80 ? 'En riesgo' : 'OK';
+    const cls       = estado === 'Sobrecosto' ? 'rojo' : estado === 'En riesgo' ? 'amarillo' : 'verde';
+    if (estado === 'Sobrecosto') alertas.push(p.nombre || p.clave);
+    return `<tr>
+      <td style="font-family:monospace;font-size:12px">${p.clave || '—'}</td>
+      <td>${p.nombre || p.clave}</td>
+      <td class="num">${presup ? fmt(presup) : '—'}</td>
+      <td class="num" style="font-weight:500">${fmt(ejercido)}</td>
+      <td class="num" style="color:${variacion===null?'#94a3b8':variacion>0?'#dc2626':'#059669'}">${variacion!==null?(variacion>0?'+':'')+fmt(variacion):'—'}</td>
+      <td class="num">${pctEjec!==null?pctEjec.toFixed(1)+'%':'—'}</td>
+      <td><span class="pill ${cls}">${estado}</span></td>
+    </tr>`;
+  }).join('');
+
+  if (alertasDiv) {
+    alertasDiv.innerHTML = alertas.length
+      ? `<div class="diag rojo" style="margin-bottom:1.25rem"><h4>⚠️ Sobrecosto en ${alertas.length} partida(s)</h4><p>${alertas.join(', ')}</p></div>`
+      : '';
+  }
+}
+
+// ─── renderCronograma ──────────────────────────────────────────────────────
+function renderCronograma(d) {
+  const cron = d.cronograma;
+  const fmtFecha = f => { if(!f) return '—'; try{ const [y,m,dd]=f.split('-'); return `${dd}/${m}/${y}`; }catch(e){ return f; } };
+  const tbody = document.getElementById('tbody-cron-niveles');
+
+  if (!cron) {
+    ['cron-inicio','cron-fin-interno','cron-fin-contrato','cron-semanas','cron-m2-total','cron-ritmo'].forEach(id=>set(id,'—'));
+    if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de cronograma. Carga el plan de obra en Centro de Carga.</td></tr>';
+    return;
+  }
+
+  set('cron-inicio',       fmtFecha(cron.fechaInicio || d.fechaInicio));
+  set('cron-fin-contrato', fmtFecha(d.fechaFin));
+  set('cron-semanas',      cron.totalSemanas ? cron.totalSemanas + ' sem.' : '—');
+  set('cron-m2-total',     cron.totalM2 ? Math.round(cron.totalM2) + ' m²' : '—');
+  const ritmo = cron.totalSemanas > 0 ? Math.round(cron.totalM2 / cron.totalSemanas) : 0;
+  set('cron-ritmo', ritmo > 0 ? ritmo + ' m²/sem' : '—');
+
+  if (cron.fechaInicio && cron.totalSemanas) {
+    try {
+      const inicio = new Date(cron.fechaInicio);
+      const fin    = new Date(inicio.getTime() + cron.totalSemanas * 7 * 24 * 3600 * 1000);
+      const dd = String(fin.getDate()).padStart(2,'0');
+      const mm = String(fin.getMonth()+1).padStart(2,'0');
+      set('cron-fin-interno', `${dd}/${mm}/${fin.getFullYear()}`);
+    } catch(e) { set('cron-fin-interno', '—'); }
+  } else { set('cron-fin-interno', '—'); }
+
+  if (!tbody) return;
+  const m2Nivel = cron.m2PorNivel || {};
+  const niveles = Object.keys(m2Nivel);
+  if (!niveles.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de niveles.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = niveles.map(n => {
+    const prog = m2Nivel[n] || 0;
+    return `<tr>
+      <td style="font-weight:600">${n}</td>
+      <td class="num">${Math.round(prog)} m²</td>
+      <td class="num">—</td>
+      <td><span class="pill morado">Sin avance real</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── renderCambios ─────────────────────────────────────────────────────────
+function renderCambios(d) {
+  const cambios = d.cambios || [];
+  const monto   = d.montoContrato || 0;
+
+  set('cambios-contrato-orig', monto ? fmtK(monto) : '—');
+
+  const extras     = cambios.filter(c=>c.tipo==='extra'&&c.estado==='aprobado').reduce((s,c)=>s+(c.monto||0),0);
+  const deductivos = cambios.filter(c=>c.tipo==='deductivo'&&c.estado==='aprobado').reduce((s,c)=>s+(c.monto||0),0);
+  const negoc      = cambios.filter(c=>c.estado==='negociacion').length;
+
+  set('cambios-extras',       extras > 0 ? fmtK(extras) : '$0');
+  set('cambios-deductivos',   deductivos > 0 ? fmtK(deductivos) : '$0');
+  set('cambios-presup-auth',  monto ? fmtK(monto + extras - deductivos) : '—');
+  set('cambios-negociacion',  negoc);
+
+  const tbody = document.getElementById('tbody-cambios');
+  if (!tbody) return;
+  if (!cambios.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:2rem;font-size:13px">Sin cambios de alcance registrados. Usa este módulo para documentar cualquier concepto extra o deductivo con el cliente.</td></tr>';
+    return;
+  }
+  let acum = 0;
+  tbody.innerHTML = cambios.map((c, i) => {
+    const aprobado = c.estado === 'aprobado';
+    if (aprobado) acum += (c.tipo === 'extra' ? 1 : -1) * (c.monto || 0);
+    const tipoCls  = c.tipo === 'extra' ? 'cambio-extra' : 'cambio-deduct';
+    const estadoCls= c.estado === 'aprobado' ? 'verde' : c.estado === 'negociacion' ? 'amarillo' : 'morado';
+    return `<tr>
+      <td style="font-weight:600">${i+1}</td>
+      <td>${c.descripcion||'—'}</td>
+      <td>${c.fecha||'—'}</td>
+      <td><span class="est-badge ${tipoCls}">${c.tipo==='extra'?'Extra':'Deductivo'}</span></td>
+      <td class="num" style="font-weight:500">${fmt(c.monto||0)}</td>
+      <td><span class="pill ${estadoCls}">${c.estado||'—'}</span></td>
+      <td class="num" style="color:${aprobado?(acum>=0?'#dc2626':'#059669'):'#94a3b8'}">${aprobado?(acum>=0?'+':'')+fmtK(acum):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Gráficas ──────────────────────────────────────────────────────────────
+function initCharts() {
+  if (chartsInited) return;
+  chartsInited = true;
+  const d = OBRA_DATA;
+
+  // Donut egresado por partida
+  const partidas = d?.partidasDetalle?.filter(p=>p.total>0) || [];
+  const COLORS = ['#1B6BB0','#3D4550','#059669','#d97706','#7c3aed','#0891b2','#dc2626','#f59e0b','#10b981'];
+  new Chart(document.getElementById('donut-egreso'), {
+    type:'doughnut',
+    data:{ labels: partidas.map(p=>p.nombre||p.clave), datasets:[{ data:partidas.map(p=>p.total), backgroundColor:COLORS, borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:8 } } } }
+  });
+
+  // Bar egresado vs presupuesto
+  const top6 = partidas.slice(0, 6);
+  new Chart(document.getElementById('bar-categorias'), {
+    type:'bar',
+    data:{ labels:top6.map(p=>p.nombre||p.clave), datasets:[
+      { label:'Egresado', data:top6.map(p=>p.total), backgroundColor:'#1B6BB0', borderRadius:4 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'} }, scales:{ y:{ ticks:{ callback:v=>'$'+Math.round(v/1000)+'K' } } } }
+  });
+
+  // Curva S
+  const cron = d?.cronograma?.programaSemanal || {};
+  const niveles = Object.keys(cron);
+  const semanas = niveles.length > 0 ? Object.keys(cron[niveles[0]]||{}).sort((a,b)=>parseInt(a.slice(1))-parseInt(b.slice(1))) : [];
+  const pvAcum = [], realAcum = [];
+  let pvSum = 0;
+  semanas.forEach(s => {
+    niveles.forEach(n => { pvSum += (cron[n]?.[s] || 0); });
+    pvAcum.push(Math.round(pvSum * 10) / 10);
+    realAcum.push(null);
+  });
+  // Fill real from estimaciones m²
+  if (d?.estimaciones?.length) {
+    d.estimaciones.forEach((e, i) => { if(i < realAcum.length) realAcum[i] = e.m2Acum; });
+  }
+  new Chart(document.getElementById('curva-s'), {
+    type:'line',
+    data:{ labels: semanas.length ? semanas : ['S1','S2','S3','S4','S5'], datasets:[
+      { label:'Programado', data:pvAcum.length?pvAcum:[0], borderColor:'#94a3b8', borderDash:[5,5], tension:0.3, fill:false, pointRadius:3 },
+      { label:'Real', data:realAcum.length?realAcum:[null], borderColor:'#1B6BB0', tension:0.3, fill:false, pointRadius:4, pointBackgroundColor:'#1B6BB0' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>Math.round(v)+'m²'}}} }
+  });
+
+  // Bar variaciones (sin presupuesto unitario disponible — solo egresado)
+  new Chart(document.getElementById('bar-variaciones'), {
+    type:'bar',
+    data:{ labels:top6.map(p=>p.nombre||p.clave), datasets:[
+      { label:'Egresado real', data:top6.map(p=>p.total), backgroundColor:'#1B6BB0', borderRadius:4 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}} }
+  });
+
+  // Bar niveles (desde cronograma)
+  const m2Nivel = d?.cronograma?.m2PorNivel || {};
+  const nvsLabels = Object.keys(m2Nivel);
+  new Chart(document.getElementById('bar-niveles'), {
+    type:'bar',
+    data:{ labels: nvsLabels.length ? nvsLabels : ['S2','S1','NPB','N1','N2'], datasets:[
+      { label:'Programado', data:nvsLabels.map(n=>m2Nivel[n]||0), backgroundColor:'#e2e8f0', borderRadius:4 },
+      { label:'Instalado', data:nvsLabels.map(()=>0), backgroundColor:'#1B6BB0', borderRadius:4 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{title:{display:true,text:'M²'}}} }
+  });
+
+  // EVM chart (usando estimaciones como AC y PV proporcional)
+  const ests = d?.estimaciones || [];
+  const evmLabels = ests.map(e=>'Est '+e.numero);
+  const acData = ests.map((_,i) => ests.slice(0,i+1).reduce((s,e)=>s+(e.estaEstimacion||0),0) + (d.totalEgresado||0) - (ests.reduce((s,e)=>s+(e.estaEstimacion||0),0)||0));
+  const evData = ests.map(e => e.acumActual || 0);
+  new Chart(document.getElementById('evm-chart'), {
+    type:'line',
+    data:{ labels:evmLabels.length?evmLabels:['S1'], datasets:[
+      { label:'Trabajo ejecutado (EV)', data:evData.length?evData:[null], borderColor:'#059669', tension:0.3, fill:false, pointRadius:5, pointBackgroundColor:'#059669' },
+      { label:'Gasto real (AC)', data:[d?.totalEgresado||0], borderColor:'#dc2626', tension:0.3, fill:false, pointRadius:5, pointBackgroundColor:'#dc2626' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}} }
+  });
+}
+
+// ─── Flujo de Caja chart ───────────────────────────────────────────────────
+function initFlujoChart() {
+  if (flujoChartInited) return;
+  flujoChartInited = true;
+  const d = OBRA_DATA;
+  const ests = d?.estimaciones || [];
+  const monto = d?.montoContrato || 4721177;
+  const labels = ests.map(e => 'Est ' + e.numero);
+  const acumEgreso = ests.map((_, i) => (d?.totalEgresado || 0)); // simplificado
+  const acumFact   = ests.map(e => e.acumActual || 0);
+  const ctx = document.getElementById('flujo-comparativo');
+  if (!ctx) return;
+  new Chart(ctx, {
+    type:'line',
+    data:{ labels: labels.length ? labels : ['Sin datos'], datasets:[
+      { label:'Costos ejercidos acum.', data:acumEgreso, borderColor:'#dc2626', backgroundColor:'rgba(220,38,38,0.08)', fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#dc2626' },
+      { label:'Facturación acumulada', data:acumFact, borderColor:'#059669', backgroundColor:'rgba(5,150,105,0.06)', fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#059669' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:true}, tooltip:{ callbacks:{ label:c=>' '+c.dataset.label+': $'+Math.round(c.raw/1000)+'K' } } },
+      scales:{ y:{ ticks:{ callback:v=>'$'+Math.round(v/1000)+'K' }, grid:{color:'#f1f5f9'} }, x:{ grid:{display:false} } }
+    }
+  });
+}
+
+// ─── Tab switch ────────────────────────────────────────────────────────────
+function switchTab(id){
+  const ids=['resumen','variaciones','cronograma','niveles','evm','estimaciones','cambios','flujocaja','edoresultados','contrato','bitacora','cargar'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',ids[i]===id));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById('s-'+id);
+  if(el)el.classList.add('active');
+  setTimeout(()=>{
+    initCharts();
+    if(id==='flujocaja')  initFlujoChart();
+    if(id==='bitacora')   initBitacora();
+    if(OBRA_DATA){
+      if(id==='cronograma')   renderCronograma(OBRA_DATA);
+      if(id==='cambios')      renderCambios(OBRA_DATA);
+      if(id==='variaciones')  renderVariaciones(OBRA_DATA);
+      if(id==='contrato')     renderContrato(OBRA_DATA);
+      if(id==='evm')          renderEVM(OBRA_DATA);
+      if(id==='estimaciones') renderTablaEstimaciones(OBRA_DATA.estimaciones||[]);
+    }
+  },100);
+}
+
+// ─── Avance manual ─────────────────────────────────────────────────────────
+const avances=[];
+function guardarAvance(){
+  const f=document.getElementById('av-fecha').value,n=document.getElementById('av-nivel').value,m=document.getElementById('av-m2').value,r=document.getElementById('av-result');
+  if(!f||!n||!m){r.style.display='block';r.style.color='#dc2626';r.textContent='Completa todos los campos.';return;}
+  avances.push({fecha:f,nivel:n,m2:parseFloat(m),hora:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})});
+  document.getElementById('tbody-avances').innerHTML=avances.slice().reverse().map(a=>`<tr><td>${a.fecha}</td><td>${a.nivel}</td><td>${a.m2} m²</td><td style="color:#64748b">${a.hora}</td></tr>`).join('');
+  r.style.display='block';r.style.color='#059669';r.textContent=`✓ ${n} · ${m} m² · ${f}`;
+  document.getElementById('av-m2').value='';
+}
+function procesarContpaq(input){const r=document.getElementById('contpaq-result');if(!input.files[0])return;r.style.display='block';r.style.color='#059669';r.textContent=`✓ ${input.files[0].name} — procesamiento en backend próximamente.`;}
+
+// ─── Contrato calculadora ──────────────────────────────────────────────────
+function calcularPenalizacion(){
+  const dias=parseInt(document.getElementById('calcDias').value)||0;
+  const pctDia=0.0025, tope=MONTO_CONTRATO*0.15;
+  const crudo=MONTO_CONTRATO*pctDia*dias, monto=Math.min(crudo,tope);
+  const f=n=>'$'+Math.round(n).toLocaleString('es-MX');
+  set('calcResultado', dias>0?f(monto):'—');
+  set('calcPct', dias>0?(monto/MONTO_CONTRATO*100).toFixed(2)+'%':'—');
+  const al=document.getElementById('calcAlerta');
+  if(al)al.style.display=(crudo>=tope&&dias>0)?'':'none';
+}
+
+// ─── Bitácora — servidor ─────────────────────────────────────────────────
+let _bitacoraCache = null;
+async function cargarBitacora(){
+  try{
+    const r=await fetch(`/api/proyectos/${CC_ACTUAL}/bitacora`);
+    if(!r.ok) throw new Error('no ok');
+    _bitacoraCache=await r.json();
+    return _bitacoraCache;
+  } catch(e){ return _bitacoraCache||[]; }
+}
+async function guardarBitacoraServidor(entradas){
+  await fetch(`/api/proyectos/${CC_ACTUAL}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bitacora:entradas})});
+  _bitacoraCache=entradas;
+}
+function previsualizarFoto(input){ const p=document.getElementById('bitPreview'); if(!input.files||!input.files[0]){p.style.display='none';return;} const r=new FileReader(); r.onload=e=>{p.src=e.target.result;p.style.display='block';}; r.readAsDataURL(input.files[0]); }
+function guardarBitacora(){
+  const fecha=document.getElementById('bitFecha').value, autor=document.getElementById('bitAutor').value.trim(), texto=document.getElementById('bitTexto').value.trim(), result=document.getElementById('bitResult');
+  if(!fecha||!texto){result.style.display='';result.style.color='#dc2626';result.style.background='#fef2f2';result.textContent='Completa al menos la fecha y la transcripción.';return;}
+  const entrada={id:Date.now().toString(36),fecha,autor,texto,hora:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),fotoDataUrl:document.getElementById('bitPreview').src.startsWith('data:')?comprimirFoto(document.getElementById('bitPreview')):null};
+  cargarBitacora().then(entradas=>{ entradas.unshift(entrada); guardarBitacoraServidor(entradas).then(()=>{ renderBitacora(entradas); limpiarBitacoraForm(); }); });
+  result.style.display='';result.style.color='#059669';result.style.background='#f0fdf4';result.textContent='✓ Entrada guardada — '+fecha+(autor?' · '+autor:'')+'.';
+  setTimeout(()=>{result.style.display='none';},4000);
+}
+function comprimirFoto(img){ try{const c=document.createElement('canvas'),max=300,r=Math.min(max/img.naturalWidth,max/img.naturalHeight);c.width=Math.round(img.naturalWidth*r);c.height=Math.round(img.naturalHeight*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.6);}catch(e){return null;} }
+function limpiarBitacoraForm(){ ['bitFecha','bitAutor','bitTexto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); document.getElementById('bitFoto').value=''; const p=document.getElementById('bitPreview');p.src='';p.style.display='none'; document.getElementById('bitResult').style.display='none'; document.getElementById('bitFecha').value=new Date().toISOString().slice(0,10); }
+function renderBitacora(entradas){
+  const lista=document.getElementById('bitLista'); if(!lista)return;
+  if(!entradas||!entradas.length){lista.innerHTML='<div class="bit-empty"><i class="ti ti-notebook" style="font-size:2.5rem;display:block;margin-bottom:10px;color:#cbd5e1"></i>Sin entradas en la bitácora.</div>';return;}
+  lista.innerHTML=entradas.map(e=>`<div class="bit-entry"><div class="bit-entry-header"><div class="bit-entry-meta"><span class="bit-entry-fecha">${e.fecha}${e.nivel?' · '+e.nivel:''}</span><span class="bit-entry-info">${e.hora||''}${e.autor?' · '+e.autor:''}</span></div><div style="display:flex;gap:8px;align-items:center">${e.fotoDataUrl?`<img class="bit-thumb" src="${e.fotoDataUrl}" onclick="verFotoCompleta('${e.id}')" title="Ver foto">`:''}  <button onclick="eliminarBitacora('${e.id}')" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px">✕</button></div></div><div class="bit-entry-texto">${e.texto}</div></div>`).join('');
+}
+async function filtrarBitacora(){ const q=document.getElementById('bitBuscador').value.toLowerCase(),todas=await cargarBitacora(); if(!q){renderBitacora(todas);return;} renderBitacora(todas.filter(e=>(e.fecha||'').includes(q)||(e.nivel||'').toLowerCase().includes(q)||(e.texto||'').toLowerCase().includes(q)||(e.autor||'').toLowerCase().includes(q))); }
+async function eliminarBitacora(id){ if(!confirm('¿Eliminar esta entrada?'))return; const entradas=(await cargarBitacora()).filter(e=>e.id!==id); await guardarBitacoraServidor(entradas); filtrarBitacora(); }
+function verFotoCompleta(id){ const e=(_bitacoraCache||[]).find(x=>x.id===id); if(!e||!e.fotoDataUrl)return; const w=window.open('','_blank'); w.document.write('<img src="'+e.fotoDataUrl+'" style="max-width:100%;display:block;margin:auto">'); }
+async function initBitacora(){ document.getElementById('bitFecha').value=new Date().toISOString().slice(0,10); renderBitacora(await cargarBitacora()); }
+
+// ─── Login ─────────────────────────────────────────────────────────────────
+const USUARIOS_OBRA={};
+function doLogin(){const u=document.getElementById('l-user').value,p=document.getElementById('l-pass').value;if(USUARIOS_OBRA[u]===p){document.getElementById('login-overlay').style.display='none';}else{document.getElementById('l-err').textContent='Usuario o contraseña incorrectos';}}
+
+// ─── Estado de Resultados ──────────────────────────────────────────────────
+function renderEdoResultados(data){
+  const fmt = v => '$' + Math.round(v).toLocaleString('es-MX');
+
+  const contrato  = data.montoContrato || 0;
+  const egresado  = data.totalEgresado || 0;
+  const ests      = data.estimaciones || [];
+  const ultimaEst = ests[ests.length - 1];
+  const facturado = ultimaEst ? (ultimaEst.acumActual || 0) : 0;
+  const retencion = ests.reduce((s,e) => s + (e.retencionEsta||0), 0);
+  const m2Acum    = ultimaEst ? (ultimaEst.m2Acum || 0) : 0;
+  const totalM2   = (data.cronograma && data.cronograma.totalM2) || 0;
+  const avancePct = totalM2 > 0 ? (m2Acum / totalM2 * 100) : 0;
+
+  const ingresos       = contrato * (avancePct / 100);
+  const pendiente      = contrato - ingresos;
+  const costoCompletar = contrato - egresado;
+  const utilidadBruta  = ingresos - egresado;
+  const margenPct      = ingresos > 0 ? (utilidadBruta / ingresos * 100) : 0;
+  const utilidadNeta   = utilidadBruta - retencion;
+  const porFacturar    = contrato - facturado;
+
+  set('edo-nombre-obra', data.nombre || ('CC ' + data.cc));
+  set('edo-r-contrato',       fmt(contrato));
+  set('edo-r-ingresos',       fmt(ingresos));
+  set('edo-r-avance-pct',     `(${avancePct.toFixed(1)}% avance físico)`);
+  set('edo-r-pendiente',      fmt(pendiente));
+  set('edo-r-costos',         fmt(egresado));
+  set('edo-r-costo-completar',fmt(costoCompletar));
+  set('edo-r-utilidad',       fmt(utilidadBruta));
+  set('edo-r-margen-pct',     margenPct.toFixed(1) + '%');
+  set('edo-r-retencion',      fmt(retencion));
+  set('edo-r-utilidad-neta',  fmt(utilidadNeta));
+  set('edo-r-facturado',      fmt(facturado));
+  set('edo-r-por-facturar',   fmt(porFacturar));
+
+  // Color utilidad
+  const elUtil = document.getElementById('edo-r-utilidad');
+  if(elUtil) elUtil.style.color = utilidadBruta >= 0 ? '#059669' : '#dc2626';
+  const elMrg = document.getElementById('edo-r-margen-pct');
+  if(elMrg) elMrg.style.color = margenPct >= 15 ? '#059669' : margenPct >= 5 ? '#d97706' : '#dc2626';
+
+  // Banner
+  const banner    = document.getElementById('edoBanner');
+  const bannerTit = document.getElementById('edoBannerTitulo');
+  const bannerTxt = document.getElementById('edoBannerTexto');
+  const bannerIcon= document.getElementById('edoBannerIcon');
+  if(utilidadBruta >= 0){
+    banner.style.background='#f0fdf4'; banner.style.borderLeftColor='#059669';
+    bannerTit.style.color='#065f46';   bannerTxt.style.color='#047857';
+    bannerIcon.textContent = '✅';
+    bannerTit.textContent = `Obra rentable — margen bruto ${margenPct.toFixed(1)}%`;
+    bannerTxt.textContent = `Ingresos reconocidos ${fmt(ingresos)} vs costos incurridos ${fmt(egresado)}. Utilidad bruta: ${fmt(utilidadBruta)}.`;
+  } else {
+    banner.style.background='#fef2f2'; banner.style.borderLeftColor='#dc2626';
+    bannerTit.style.color='#991b1b';   bannerTxt.style.color='#7f1d1d';
+    bannerIcon.textContent = '🔴';
+    bannerTit.textContent = 'Alerta: costos superan ingresos reconocidos';
+    bannerTxt.textContent = `Los costos incurridos (${fmt(egresado)}) superan los ingresos por avance (${fmt(ingresos)}). Déficit: ${fmt(Math.abs(utilidadBruta))}. Revisar productividad.`;
+  }
+}
+
+// ─── Gemini modal ──────────────────────────────────────────────────────────
+const GEMINI_KEY = 'AIzaSyAQ.Ab8RN6IMQnADqjUNMmIbqV2-MQu-CktEKYtAueriucte2TVC2Q';
+let geminiContexto = {};
+
+function abrirGemini(){
+  document.getElementById('gemini-modal').style.display='flex';
+  document.getElementById('gemini-input').focus();
+}
+function cerrarGemini(){ document.getElementById('gemini-modal').style.display='none'; }
+
+async function preguntarGemini(){
+  const input = document.getElementById('gemini-input');
+  const pregunta = input.value.trim();
+  if(!pregunta) return;
+  const chat = document.getElementById('gemini-chat');
+  chat.innerHTML += `<div style="text-align:right;margin-bottom:10px"><span style="background:#1B6BB0;color:#fff;padding:8px 12px;border-radius:10px 10px 2px 10px;display:inline-block;font-size:13px;max-width:80%">${pregunta}</span></div>`;
+  input.value='';
+  chat.innerHTML += `<div id="gemini-typing" style="color:#94a3b8;font-size:13px;margin-bottom:10px">⏳ Analizando datos de la obra...</div>`;
+  chat.scrollTop = chat.scrollHeight;
+
+  const ctx = geminiContexto;
+  const prompt = `Eres el Director Financiero de Comercial Waller. Tienes acceso a los datos reales de la obra "${ctx.nombreObra || ''}".
+
+DATOS ACTUALES:
+- Contrato: ${ctx.contrato || '—'}
+- Costos egresados: ${ctx.egresado || '—'}
+- Facturado al cliente: ${ctx.facturado || '—'}
+- Avance físico: ${ctx.avancePct || '—'}%
+- Retención acumulada: ${ctx.retencion || '—'}
+- Partidas con sobrecosto: ${ctx.partidasSobrecosto || 'sin datos'}
+
+Responde en español, de forma directa y ejecutiva (máx 3 párrafos). Da tu opinión profesional, alertas y recomendaciones concretas, como si fueras el responsable financiero de la empresa.
+
+Pregunta del usuario: ${pregunta}`;
+
+  try {
+    const resp = await fetch('/api/gemini',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt})
+    });
+    const json = await resp.json();
+    if(!resp.ok){ throw new Error(json.error || 'HTTP ' + resp.status); }
+    const texto = json.texto || 'Sin respuesta.';
+    document.getElementById('gemini-typing')?.remove();
+    chat.innerHTML += `<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="#1B6BB0"/></svg><span style="font-size:12px;font-weight:600;color:#1B6BB0">Director Financiero IA</span></div><div style="background:#f8fafc;border-radius:2px 10px 10px 10px;padding:10px 14px;font-size:13px;color:#1e293b;line-height:1.6;white-space:pre-wrap">${texto}</div></div>`;
+    chat.scrollTop = chat.scrollHeight;
+  } catch(e){
+    document.getElementById('gemini-typing')?.remove();
+    chat.innerHTML += `<div style="color:#dc2626;font-size:13px;margin-bottom:10px">Error: ${e.message}</div>`;
+    console.error('Gemini error:', e);
+  }
+}
+
+// ─── Estado servidor: archivos ─────────────────────────────────────────────
+let ARCHIVOS_SERVER = {};
+let CC_ACTUAL = null;
+
+async function cargarArchivosServidor(cc) {
+  try {
+    const resp = await fetch('/api/archivos/' + cc);
+    if (resp.ok) ARCHIVOS_SERVER = await resp.json();
+  } catch(e) { console.warn('No se pudo cargar archivos:', e.message); }
+}
+
+// ─── Panel de Archivos ─────────────────────────────────────────────────────
+
+const ARCHIVO_TIPOS = [
+  { id:'contrato',         label:'Contrato',            icon:'ti-file-description', multi:false, accept:'.pdf,.docx',     secciones:['Contrato','Cambios'] },
+  { id:'cotizacion',       label:'Cotización',           icon:'ti-file-spreadsheet',  multi:false, accept:'.xlsx,.xls',    secciones:['Variaciones','Resumen'] },
+  { id:'preciosUnitarios', label:'Precios unitarios',    icon:'ti-coin',              multi:true,  accept:'.xlsx,.xls,.pdf',secciones:['Estimaciones','Cambios'] },
+  { id:'planObra',         label:'Plan de obra maestro', icon:'ti-calendar-stats',    multi:false, accept:'.xlsx,.xls',    secciones:['Cronograma','Valor ganado'] },
+  { id:'avanceDiario',     label:'Avance diario',        icon:'ti-layers-difference', multi:false, accept:'.xlsx,.xls',    secciones:['Por nivel','Cronograma','Valor ganado'], tieneFormManual:true },
+  { id:'contpaq',          label:'ContPAQ',              icon:'ti-report-analytics',  multi:true,  accept:'.csv,.xlsx',    secciones:['Resumen','Variaciones','Flujo','Edo. Resultados'], tieneActivo:true },
+  { id:'estimaciones',     label:'Estimaciones',         icon:'ti-receipt',           multi:false, accept:'.xlsx,.xls,.csv',secciones:['Estimaciones','Flujo','Edo. Resultados'] },
+  { id:'bitacora',         label:'Bitácora',             icon:'ti-notebook',          multi:false, accept:'',              secciones:['Bitácora'], virtual:true },
+];
+
+const VALIDACIONES_SECCIONES = [
+  { seccion:'Resumen',         tab:'resumen',       requiere:['contpaq','avanceDiario'] },
+  { seccion:'Variaciones',     tab:'variaciones',   requiere:['contpaq','cotizacion'] },
+  { seccion:'Cronograma',      tab:'cronograma',    requiere:['planObra','avanceDiario'] },
+  { seccion:'Por nivel',       tab:'niveles',       requiere:['avanceDiario'] },
+  { seccion:'Valor ganado',    tab:'evm',           requiere:['planObra','avanceDiario','contpaq'] },
+  { seccion:'Estimaciones',    tab:'estimaciones',  requiere:['estimaciones'] },
+  { seccion:'Cambios',         tab:'cambios',       requiere:['contrato'] },
+  { seccion:'Flujo de Caja',   tab:'flujocaja',     requiere:['contpaq','estimaciones'] },
+  { seccion:'Edo. Resultados', tab:'edoresultados', requiere:['contpaq','estimaciones','avanceDiario'] },
+  { seccion:'Contrato',        tab:'contrato',      requiere:['contrato'] },
+  { seccion:'Bitácora',        tab:'bitacora',      requiere:[] },
+];
+
+// Registro archivos e historial — servidor
+async function cargarRegistro(){ try{ const r=await fetch(`/api/archivos/${CC_ACTUAL}`); return await r.json(); }catch(e){ return {}; } }
+async function guardarRegistro(tipo, nombre){ try{ await fetch(`/api/archivos/${CC_ACTUAL}/meta`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo,nombre})}); }catch(e){} }
+function cargarHistorialArch(){ return []; }
+
+function registrarHistorial(tipoLabel, nombre){
+  const h = cargarHistorialArch();
+  h.unshift({ tipo:tipoLabel, nombre, fecha:new Date().toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) });
+  if(h.length>50) h.length=50;
+  renderHistorial();
+}
+
+function renderHistorial(){
+  const tbody = document.getElementById('tbody-historial');
+  if(!tbody) return;
+  const h = cargarHistorialArch();
+  if(!h.length){ tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin historial.</td></tr>'; return; }
+  tbody.innerHTML = h.slice(0,15).map(e=>`<tr>
+    <td style="font-weight:500;color:#475569">${e.tipo}</td>
+    <td style="color:#64748b;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.nombre}</td>
+    <td style="color:#94a3b8;font-size:11px;white-space:nowrap">${e.fecha}</td>
+  </tr>`).join('');
+}
+
+function chipEstado(estado){
+  if(estado==='ok')    return '<span class="arch-chip ok">✅ OK</span>';
+  if(estado==='error') return '<span class="arch-chip error">❌ Error</span>';
+  return '<span class="arch-chip vacio">— Sin verificar</span>';
+}
+
+function renderPanelArchivos(){
+  const cont = document.getElementById('panel-archivos');
+  if(!cont) return;
+
+  const inputs = ARCHIVO_TIPOS.filter(t=>!t.virtual).map(t=>
+    `<input type="file" class="arch-input" id="arch-input-${t.id}" accept="${t.accept}" onchange="onArchivoSeleccionado('${t.id}',this)">`
+  ).join('');
+
+  let html = inputs;
+
+  ARCHIVO_TIPOS.forEach(tipo => {
+    const entry = ARCHIVOS_SERVER[tipo.id];
+    html += `<div class="arch-grupo-header"><i class="ti ${tipo.icon}"></i>${tipo.label}${tipo.multi?'<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:4px;text-transform:none">(pueden ser varios)</span>':''}</div>`;
+
+    if(tipo.virtual){
+      const n = cargarBitacora().length;
+      html += `<div class="arch-fila">
+        <div class="arch-tipo">Bitácora digital</div>
+        <div class="arch-secciones">${n} entradas · en este dispositivo</div>
+        <div class="arch-fecha">—</div>
+        <div><span class="arch-chip ${n>0?'ok':'vacio'}">${n>0?'✅ Con datos':'— Vacía'}</span></div>
+        <div class="arch-actions"><button class="btn-xs sec" onclick="switchTab('bitacora')"><i class="ti ti-notebook" style="font-size:10px"></i> Ver</button></div>
+      </div>`;
+      return;
+    }
+
+    const filaVacia = () => `<div class="arch-fila">
+      <div class="arch-tipo" style="color:#94a3b8;font-style:italic;font-weight:400">Sin archivo</div>
+      <div class="arch-secciones">${tipo.secciones.join(' · ')}</div>
+      <div class="arch-fecha">—</div>
+      <div><span class="arch-chip vacio">— Sin cargar</span></div>
+      <div class="arch-actions">
+        <button class="btn-xs pri" onclick="triggerUpload('${tipo.id}')"><i class="ti ti-upload" style="font-size:10px"></i> Cargar</button>
+        ${tipo.tieneFormManual?`<button class="btn-xs sec" onclick="toggleAvanceForm()"><i class="ti ti-pencil" style="font-size:10px"></i> Manual</button>`:''}
+      </div>
+    </div>`;
+
+    const filaEntrada = (e, esActual) => `<div class="arch-fila">
+      <div class="arch-tipo">${e.nombre||'—'}${esActual&&e.fuente!=='inferido'?'':''}</div>
+      <div class="arch-secciones">${esActual?tipo.secciones.join(' · '):`<span style="color:#94a3b8">Respaldo anterior</span>`}</div>
+      <div class="arch-fecha">${e.fechaCarga||'—'}</div>
+      <div>${chipEstado(e.estado)}</div>
+      <div class="arch-actions">
+        ${esActual?`<button class="btn-xs pri" onclick="triggerUpload('${tipo.id}')"><i class="ti ti-refresh" style="font-size:10px"></i> Actualizar</button>`:''}
+        ${esActual?`<button class="btn-xs sec" onclick="triggerUpload('${tipo.id}')"><i class="ti ti-upload" style="font-size:10px"></i> Reemplazar</button>`:''}
+        ${tipo.tieneFormManual&&esActual?`<button class="btn-xs sec" onclick="toggleAvanceForm()"><i class="ti ti-pencil" style="font-size:10px"></i> Manual</button>`:''}
+      </div>
+    </div>`;
+
+    if(tipo.multi){
+      // Tipos multi (preciosUnitarios): array en ARCHIVOS_SERVER
+      const entradas = Array.isArray(entry) ? entry : [];
+      if(!entradas.length){ html += filaVacia(); }
+      else { entradas.forEach(e => { html += filaEntrada(e, true); }); }
+      html += `<div style="padding:5px 0 3px"><button class="btn-xs sec" onclick="triggerUpload('${tipo.id}')"><i class="ti ti-plus" style="font-size:10px"></i> Agregar otro ${tipo.label}</button></div>`;
+    } else {
+      // Tipo simple: { actual, anterior }
+      if(!entry || !entry.actual){ html += filaVacia(); }
+      else {
+        html += filaEntrada(entry.actual, true);
+        if(entry.anterior) html += filaEntrada(entry.anterior, false);
+      }
+    }
+  });
+
+  cont.innerHTML = html;
+}
+
+function triggerUpload(tipoId){
+  const input = document.getElementById('arch-input-'+tipoId);
+  if(input) input.click();
+}
+
+async function onArchivoSeleccionado(tipoId, input){
+  const file = input.files[0];
+  if(!file) return;
+  const tipo = ARCHIVO_TIPOS.find(t=>t.id===tipoId);
+  const fd   = new FormData();
+  fd.append('archivo', file);
+
+  // Mapeo tipo → endpoint del servidor
+  const endpointMap = {
+    contpaq:      '/api/upload/contpaq',
+    planObra:     '/api/upload/cronograma/' + CC_ACTUAL,
+    estimaciones: '/api/upload/estimacion',
+  };
+  const endpoint = endpointMap[tipoId];
+
+  // Feedback visual
+  const btn = document.querySelector(`[onclick="triggerUpload('${tipoId}')"]`);
+  if(btn){ btn.innerHTML='<i class="ti ti-loader-2" style="font-size:10px"></i> Subiendo...'; btn.disabled=true; }
+
+  try {
+    let json;
+    if(endpoint){
+      // Archivo procesable: subir y parsear en servidor
+      const resp = await fetch(endpoint, { method:'POST', body:fd });
+      json = await resp.json();
+      if(!resp.ok) throw new Error(json.error || 'Error al procesar');
+    } else {
+      // Archivo de referencia (contrato, cotización, precios unitarios, etc.)
+      const metaEndpoint = tipo?.multi
+        ? `/api/archivos/${CC_ACTUAL}/meta/multi`
+        : `/api/archivos/${CC_ACTUAL}/meta`;
+      const resp = await fetch(metaEndpoint, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ tipo:tipoId, nombre:file.name })
+      });
+      json = await resp.json();
+      if(!resp.ok) throw new Error(json.error || 'Error al registrar');
+    }
+
+    // Refrescar archivos y dashboard
+    await cargarArchivosServidor(CC_ACTUAL);
+    if(endpoint) await loadData(); // recarga datos del dashboard
+    renderPanelArchivos();
+    validarCobertura();
+    renderHistorial();
+
+    mostrarMensajePanel(`✅ ${json.mensaje || file.name + ' procesado correctamente'}`);
+  } catch(e){
+    mostrarMensajePanel('❌ ' + e.message, true);
+  } finally {
+    if(btn){ btn.innerHTML=`<i class="ti ti-refresh" style="font-size:10px"></i> Actualizar`; btn.disabled=false; }
+    input.value='';
+  }
+}
+
+function mostrarMensajePanel(msg, esError=false){
+  let div = document.getElementById('panel-msg');
+  if(!div){
+    div = document.createElement('div');
+    div.id = 'panel-msg';
+    div.style.cssText='margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;';
+    document.getElementById('panel-archivos')?.after(div);
+  }
+  div.style.background = esError ? '#fef2f2' : '#f0fdf4';
+  div.style.color = esError ? '#dc2626' : '#059669';
+  div.textContent = msg;
+  div.style.display = 'block';
+  setTimeout(()=>{ div.style.display='none'; }, 5000);
+}
+
+async function actualizarTodo(evt){
+  const btn = evt?.target?.closest('button');
+  if(btn){ btn.innerHTML='<i class="ti ti-loader-2"></i> Actualizando...'; btn.disabled=true; }
+  await cargarArchivosServidor(CC_ACTUAL);
+  await loadData();
+  renderPanelArchivos();
+  validarCobertura();
+  if(btn){ btn.innerHTML='<i class="ti ti-refresh"></i> Actualizar todo'; btn.disabled=false; }
+}
+
+function toggleAvanceForm(){
+  const card = document.getElementById('avance-form-card');
+  if(!card) return;
+  card.style.display = card.style.display==='none'?'block':'none';
+  if(card.style.display==='block') card.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ─── Validación de cobertura ───────────────────────────────────────────────
+
+// Sincroniza el registro local con los datos que ya vienen de la API del servidor
+function sincronizarRegistroDesdeAPI(d){
+  if(!d) return;
+  const reg = cargarRegistro();
+  let cambio = false;
+
+  // ContPAQ — si el servidor tiene egresado y no hay registro local
+  if(d.totalEgresado > 0 && (!Array.isArray(reg.contpaq) || !reg.contpaq.length)){
+    reg.contpaq = [{
+      id: 'srv-contpaq',
+      nombre: 'Libro auxiliar ContPAQ (en servidor)',
+      fechaCarga: d.ultimaActualizacion || '—',
+      estado: 'ok',
+      activo: true,
+      fuente: 'servidor'
+    }];
+    cambio = true;
+  } else if(d.totalEgresado > 0 && Array.isArray(reg.contpaq)){
+    // Actualizar fecha del activo con la del servidor
+    const activo = reg.contpaq.find(e=>e.activo);
+    if(activo && activo.fuente==='servidor'){
+      activo.fechaCarga = d.ultimaActualizacion || activo.fechaCarga;
+      cambio = true;
+    }
+  }
+
+  // Estimaciones
+  if(d.estimaciones?.length > 0 && !reg.estimaciones){
+    const ultima = d.estimaciones[d.estimaciones.length-1];
+    reg.estimaciones = {
+      id: 'srv-estimaciones',
+      nombre: `${d.estimaciones.length} estimación(es) en servidor`,
+      fechaCarga: ultima.periodoHasta?.slice(0,10) || d.ultimaActualizacion || '—',
+      estado: 'ok',
+      fuente: 'servidor'
+    };
+    cambio = true;
+  }
+
+  // Cronograma / Plan de obra
+  if(d.cronograma?.totalM2 > 0 && !reg.planObra){
+    reg.planObra = {
+      id: 'srv-planobra',
+      nombre: 'Cronograma (en servidor)',
+      fechaCarga: d.ultimaActCronograma || '—',
+      estado: 'ok',
+      fuente: 'servidor'
+    };
+    cambio = true;
+  }
+
+  // Avance diario — si hay m2 en estimaciones o cronograma
+  const m2Acum = d.estimaciones?.slice(-1)[0]?.m2Acum || 0;
+  if(m2Acum > 0 && !reg.avanceDiario){
+    reg.avanceDiario = {
+      id: 'srv-avance',
+      nombre: `Avance registrado: ${Math.round(m2Acum)} m² acum.`,
+      fechaCarga: d.ultimaActualizacion || '—',
+      estado: 'ok',
+      fuente: 'servidor'
+    };
+    cambio = true;
+  }
+
+  // Contrato — si existe montoContrato
+  if(d.montoContrato > 0 && !reg.contrato){
+    reg.contrato = {
+      id: 'srv-contrato',
+      nombre: `Contrato $${Math.round(d.montoContrato/1000000*100)/100}M (en servidor)`,
+      fechaCarga: d.contrato?.fechaFirma || '—',
+      estado: 'ok',
+      fuente: 'servidor'
+    };
+    cambio = true;
+  }
+
+  if(cambio){ guardarRegistro(reg); }
+}
+
+function tieneArchivo(tipoId){
+  const tipo = ARCHIVO_TIPOS.find(t=>t.id===tipoId);
+  if(tipo?.virtual) return tipoId==='bitacora' ? cargarBitacora().length>0 : false;
+  const entry = ARCHIVOS_SERVER[tipoId];
+  if(!entry) return false;
+  if(Array.isArray(entry)) return entry.some(e=>e.estado!=='error');
+  return !!(entry.actual && entry.actual.estado !== 'error');
+}
+
+function validarCobertura(){
+  const cont = document.getElementById('val-report');
+  if(!cont) return;
+
+  let html = '';
+  VALIDACIONES_SECCIONES.forEach(v=>{
+    let icono, colorEst, texto;
+    if(!v.requiere.length){
+      icono='✅'; colorEst='#059669'; texto='Siempre disponible';
+    } else {
+      const faltantes = v.requiere.filter(r=>!tieneArchivo(r));
+      const conError  = v.requiere.some(r=>tieneArchivoConError(r));
+      const alguno    = v.requiere.some(r=>tieneArchivo(r));
+      if(conError){
+        icono='❌'; colorEst='#dc2626'; texto='Error en archivo · revisar en panel';
+      } else if(!alguno){
+        icono='—'; colorEst='#94a3b8';
+        texto='Sin cargar · necesita: '+v.requiere.map(r=>ARCHIVO_TIPOS.find(t=>t.id===r)?.label||r).join(', ');
+      } else if(!faltantes.length){
+        icono='✅'; colorEst='#059669'; texto='Datos completos';
+      } else {
+        icono='⚠️'; colorEst='#d97706';
+        texto='Parcial · falta: '+faltantes.map(r=>ARCHIVO_TIPOS.find(t=>t.id===r)?.label||r).join(', ');
+      }
+    }
+    html+=`<div class="val-row">
+      <div class="val-icono">${icono}</div>
+      <div class="val-seccion">${v.seccion}</div>
+      <div class="val-estado" style="color:${colorEst}">${texto}</div>
+    </div>`;
+  });
+  cont.innerHTML = html;
+  actualizarDots();
+}
+
+function tieneArchivoConError(tipoId){
+  const tipo = ARCHIVO_TIPOS.find(t=>t.id===tipoId);
+  if(tipo?.virtual) return false;
+  const entry = ARCHIVOS_SERVER[tipoId];
+  if(!entry) return false;
+  if(Array.isArray(entry)) return entry.some(e=>e.estado==='error');
+  return entry.actual?.estado === 'error';
+}
+
+function actualizarDots(){
+  VALIDACIONES_SECCIONES.forEach(v=>{
+    const dot = document.getElementById('tst-'+v.tab);
+    if(!dot){ return; }
+    // Sin requisitos = bitácora, siempre gris neutro hasta que tenga entradas
+    if(!v.requiere.length){
+      dot.className = cargarBitacora().length>0 ? 'tab-st ok' : 'tab-st';
+      return;
+    }
+    const conError   = v.requiere.some(r=>tieneArchivoConError(r));
+    const faltantes  = v.requiere.filter(r=>!tieneArchivo(r));
+    const alguno     = v.requiere.some(r=>tieneArchivo(r));
+
+    if(conError)                              dot.className='tab-st err';   // rojo: archivo cargado con error
+    else if(!alguno)                          dot.className='tab-st';       // gris: nada cargado aún
+    else if(faltantes.length)                 dot.className='tab-st warn';  // amarillo: parcial
+    else                                      dot.className='tab-st ok';    // verde: completo
+  });
+}
+
+function renderHistorial(){
+  const tbody = document.getElementById('tbody-historial');
+  if(!tbody) return;
+  // Construir historial desde ARCHIVOS_SERVER (actual y anterior de cada tipo)
+  const entradas = [];
+  ARCHIVO_TIPOS.filter(t=>!t.virtual&&!t.multi).forEach(tipo=>{
+    const entry = ARCHIVOS_SERVER[tipo.id];
+    if(entry?.actual) entradas.push({ tipo:tipo.label, nombre:entry.actual.nombre, fecha:entry.actual.fechaCarga });
+    if(entry?.anterior) entradas.push({ tipo:tipo.label+' (respaldo)', nombre:entry.anterior.nombre, fecha:entry.anterior.fechaCarga });
+  });
+  ARCHIVO_TIPOS.filter(t=>!t.virtual&&t.multi).forEach(tipo=>{
+    const entry = ARCHIVOS_SERVER[tipo.id];
+    if(Array.isArray(entry)) entry.forEach(e=>entradas.push({ tipo:tipo.label, nombre:e.nombre, fecha:e.fechaCarga }));
+  });
+  if(!entradas.length){
+    tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin historial registrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = entradas.map(e=>`<tr>
+    <td style="font-weight:500;color:#475569">${e.tipo}</td>
+    <td style="color:#64748b;font-size:12px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.nombre}">${e.nombre}</td>
+    <td style="color:#94a3b8;font-size:11px;white-space:nowrap">${e.fecha||'—'}</td>
+  </tr>`).join('');
+}
+
+async function initPanelArchivos(){
+  if(Object.keys(ARCHIVOS_SERVER).length === 0){
+    await cargarArchivosServidor(CC_ACTUAL);
+  }
+  renderPanelArchivos();
+  renderHistorial();
+  validarCobertura();
+}
+
+window.addEventListener('load', loadData);
+</script>
+</body>
+</html>
