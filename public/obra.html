@@ -173,28 +173,6 @@ input[type=file].arch-input{display:none}
 </head>
 <body>
 
-<!-- ══ MODAL GEMINI ══ -->
-<div id="gemini-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:14px;width:min(600px,95vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
-    <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:10px">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="#1B6BB0"/></svg>
-        <div>
-          <div style="font-weight:700;font-size:15px;color:#1e293b">Director Financiero IA</div>
-          <div style="font-size:11px;color:#94a3b8">Powered by Gemini · Datos reales de la obra</div>
-        </div>
-      </div>
-      <button onclick="cerrarGemini()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;line-height:1">✕</button>
-    </div>
-    <div id="gemini-chat" style="flex:1;overflow-y:auto;padding:16px 20px;min-height:200px;max-height:50vh"></div>
-    <div style="padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;gap:8px">
-      <input id="gemini-input" type="text" placeholder="Pregunta sobre esta obra... (ej: ¿Cómo está el margen?)" onkeydown="if(event.key==='Enter')preguntarGemini()"
-        style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:13px;outline:none">
-      <button onclick="preguntarGemini()" style="background:#1B6BB0;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer">Enviar</button>
-    </div>
-  </div>
-</div>
-
 <div id="login-overlay">
   <div id="login-box">
     <div class="logo">WALLER</div>
@@ -225,10 +203,6 @@ input[type=file].arch-input{display:none}
     <a href="/obras.html"><i class="ti ti-building"></i> Portafolio</a>
     <a href="/cargar.html"><i class="ti ti-upload"></i> Cargar</a>
     <a href="/portal.html"><i class="ti ti-layout-grid"></i> Portal</a>
-    <button onclick="abrirGemini()" title="Consultar Director Financiero IA" style="background:linear-gradient(135deg,#4285f4,#9b59b6);border:none;border-radius:8px;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;color:#fff;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(66,133,244,0.4)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="white"/></svg>
-      Gemini
-    </button>
   </div>
 </nav>
 
@@ -511,14 +485,6 @@ input[type=file].arch-input{display:none}
       </div>
     </div>
 
-    <!-- Botón Gemini -->
-    <div style="margin-top:0.5rem">
-      <button onclick="abrirGemini()" style="background:linear-gradient(135deg,#4285f4,#9b59b6);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(66,133,244,0.4)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="white"/></svg>
-        Analizar con Director Financiero IA
-      </button>
-    </div>
-
   </div>
 
   <!-- ══ CONTRATO ══ -->
@@ -540,26 +506,32 @@ input[type=file].arch-input{display:none}
     <div class="bit-form">
       <h3 style="font-size:14px;font-weight:600;color:#3D4550;margin-bottom:1rem"><i class="ti ti-plus" style="color:#1B6BB0;margin-right:5px"></i> Nueva entrada de bitácora</h3>
       <div class="bit-form-grid">
-        <div><label class="bit-label">Fecha</label><input type="date" id="bitFecha" class="bit-input"></div>
-        <div><label class="bit-label">Registrado por</label><input type="text" id="bitAutor" class="bit-input" placeholder="Residente / Supervisor"></div>
+        <div>
+          <label class="bit-label">Fecha</label>
+          <input type="date" id="bitFecha" class="bit-input">
+        </div>
+        <div>
+          <label class="bit-label">Categoría</label>
+          <select id="bitCategoria" class="bit-input" style="background:#fff;cursor:pointer">
+            <option value="técnico">Técnico</option>
+            <option value="administrativo">Administrativo</option>
+            <option value="seguridad">Seguridad</option>
+            <option value="cambio de alcance">Cambio de alcance</option>
+          </select>
+        </div>
       </div>
-      <div style="margin-bottom:10px"><label class="bit-label">Transcripción de la bitácora</label>
-        <textarea id="bitTexto" class="bit-textarea" placeholder="Escribe o pega aquí el texto transcrito de la bitácora física..."></textarea>
-      </div>
-      <div style="margin-top:10px">
-        <label class="bit-label">Foto de bitácora física (opcional)</label>
-        <label for="bitFoto"><div class="bit-foto-zone"><i class="ti ti-camera" style="font-size:28px;color:#94a3b8;display:block;margin-bottom:6px"></i><p style="font-size:13px;color:#64748b">Toca para seleccionar foto · JPG, PNG</p><p style="font-size:11px;color:#94a3b8;margin-top:4px">La imagen se guarda localmente. Transcripción automática con IA — próximamente.</p></div></label>
-        <input type="file" id="bitFoto" accept="image/*" onchange="previsualizarFoto(this)">
-        <img id="bitPreview" class="bit-preview" alt="Vista previa">
+      <div style="margin-bottom:10px">
+        <label class="bit-label">Descripción</label>
+        <textarea id="bitTexto" class="bit-textarea" placeholder="Describe el evento, avance, incidencia o decisión registrada..."></textarea>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn-primary" onclick="guardarBitacora()"><i class="ti ti-check"></i> Guardar entrada</button>
-        <button class="btn-primary" style="background:#6b7280" onclick="limpiarBitacoraForm()"><i class="ti ti-x"></i> Cancelar</button>
+        <button class="btn-primary" style="background:#6b7280" onclick="limpiarBitacoraForm()"><i class="ti ti-x"></i> Limpiar</button>
       </div>
-      <div id="bitResult" style="display:none;margin-top:10px;font-size:13px;color:#059669;background:#f0fdf4;border-radius:7px;padding:10px"></div>
+      <div id="bitResult" style="display:none;margin-top:10px;font-size:13px;border-radius:7px;padding:10px"></div>
     </div>
 
-    <input type="text" class="bit-search" id="bitBuscador" placeholder="🔍 Buscar por fecha, nivel, texto..." oninput="filtrarBitacora()">
+    <input type="text" class="bit-search" id="bitBuscador" placeholder="🔍 Buscar por fecha, categoría, texto..." oninput="filtrarBitacora()">
     <div id="bitLista"></div>
   </div>
 
@@ -717,18 +689,6 @@ function renderDashboard(d) {
   renderCronograma(d);
   renderCambios(d);
 
-  // Contexto para Gemini
-  const _k = v => '$' + Math.round(v/1000) + 'K';
-  geminiContexto = {
-    nombreObra: d.nombre || ('Obra ' + d.cc),
-    contrato: _k(monto),
-    egresado: _k(egresado),
-    facturado: _k(facturado),
-    avancePct: d.resumen?.avancePct || (monto > 0 ? (egresado / monto * 100).toFixed(1) : 0),
-    retencion: _k(retencion),
-    partidasSobrecosto: (d.partidasDetalle || []).filter(p => (p.ejercido||p.total||0) > (p.presupuesto||0)).map(p => p.nombre || p.clave).join(', ') || 'ninguna detectada'
-  };
-
   // Estimaciones tab
   set('est-kpi-contrato', fmtK(monto));
   set('est-kpi-facturado', fmtK(facturado));
@@ -762,6 +722,8 @@ function renderEVM(d) {
       const lista = document.getElementById('evm-diag-lista');
       if (lista) lista.innerHTML = '';
     }
+    const tbody = document.getElementById('evm-proyecciones');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:1rem">Para activar EVM conecta el avance diario en Centro de Carga.</td></tr>';
     return;
   }
 
@@ -906,8 +868,8 @@ function renderContrato(d) {
   const el = document.getElementById('contrato-dinamico');
   if (!el) return;
 
-  if (!monto) {
-    el.innerHTML = `<div class="info-box" style="background:#fef2f2;border-color:#dc2626;color:#991b1b">
+  if (!d.contrato) {
+    el.innerHTML = `<div class="info-box" style="background:#fef2f2;border-color:#dc2626;color:#991b1b;padding:1.25rem;border-radius:8px;border-left:4px solid #dc2626;font-size:14px">
       Sin contrato cargado — sube el PDF en <a href="/cargar.html?cc=${CC_ACTUAL}" style="color:#1B6BB0;font-weight:600">Centro de Carga</a> para ver los datos del contrato.
     </div>`;
     return;
@@ -1015,7 +977,7 @@ function renderVariaciones(d) {
   const cotizacion = d.cotizacion;
 
   if (!partidas.length) {
-    const msg = (cotizacion && Array.isArray(cotizacion.secciones) && cotizacion.secciones.length === 0)
+    const msg = (!cotizacion || !cotizacion.secciones?.length)
       ? 'Sin cotización cargada — sube el archivo en Centro de Carga'
       : 'Sin datos de variaciones. Carga el ContPAQ para activar este módulo.';
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:1.5rem">${msg}</td></tr>`;
@@ -1307,24 +1269,83 @@ async function guardarBitacoraServidor(entradas){
   await fetch(`/api/proyectos/${CC_ACTUAL}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bitacora:entradas})});
   _bitacoraCache=entradas;
 }
-function previsualizarFoto(input){ const p=document.getElementById('bitPreview'); if(!input.files||!input.files[0]){p.style.display='none';return;} const r=new FileReader(); r.onload=e=>{p.src=e.target.result;p.style.display='block';}; r.readAsDataURL(input.files[0]); }
-function guardarBitacora(){
-  const fecha=document.getElementById('bitFecha').value, autor=document.getElementById('bitAutor').value.trim(), texto=document.getElementById('bitTexto').value.trim(), result=document.getElementById('bitResult');
-  if(!fecha||!texto){result.style.display='';result.style.color='#dc2626';result.style.background='#fef2f2';result.textContent='Completa al menos la fecha y la transcripción.';return;}
-  const entrada={id:Date.now().toString(36),fecha,autor,texto,hora:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),fotoDataUrl:document.getElementById('bitPreview').src.startsWith('data:')?comprimirFoto(document.getElementById('bitPreview')):null};
-  cargarBitacora().then(entradas=>{ entradas.unshift(entrada); guardarBitacoraServidor(entradas).then(()=>{ renderBitacora(entradas); limpiarBitacoraForm(); }); });
-  result.style.display='';result.style.color='#059669';result.style.background='#f0fdf4';result.textContent='✓ Entrada guardada — '+fecha+(autor?' · '+autor:'')+'.';
-  setTimeout(()=>{result.style.display='none';},4000);
+async function guardarBitacora() {
+  const fecha = document.getElementById('bitFecha').value;
+  const categoria = document.getElementById('bitCategoria').value;
+  const texto = document.getElementById('bitTexto').value.trim();
+  const result = document.getElementById('bitResult');
+
+  if (!fecha || !texto) {
+    result.style.cssText = 'display:block;padding:10px;border-radius:7px;font-size:13px;background:#fef2f2;color:#dc2626;margin-top:10px';
+    result.textContent = 'Completa al menos la fecha y la descripción.';
+    return;
+  }
+
+  result.style.cssText = 'display:block;padding:10px;border-radius:7px;font-size:13px;background:#f8fafc;color:#64748b;margin-top:10px';
+  result.textContent = 'Guardando...';
+
+  try {
+    const resp = await fetch(`/api/proyectos/${CC_ACTUAL}/bitacora`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha, categoria, texto })
+    });
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'Error al guardar'); }
+    limpiarBitacoraForm();
+    await initBitacora();
+    result.style.cssText = 'display:block;padding:10px;border-radius:7px;font-size:13px;background:#f0fdf4;color:#059669;margin-top:10px';
+    result.textContent = '✓ Entrada guardada — ' + fecha + ' · ' + categoria + '.';
+    setTimeout(() => { result.style.display = 'none'; }, 3000);
+  } catch(e) {
+    result.style.cssText = 'display:block;padding:10px;border-radius:7px;font-size:13px;background:#fef2f2;color:#dc2626;margin-top:10px';
+    result.textContent = '❌ ' + e.message;
+  }
 }
-function comprimirFoto(img){ try{const c=document.createElement('canvas'),max=300,r=Math.min(max/img.naturalWidth,max/img.naturalHeight);c.width=Math.round(img.naturalWidth*r);c.height=Math.round(img.naturalHeight*r);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',0.6);}catch(e){return null;} }
-function limpiarBitacoraForm(){ ['bitFecha','bitAutor','bitTexto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); document.getElementById('bitFoto').value=''; const p=document.getElementById('bitPreview');p.src='';p.style.display='none'; document.getElementById('bitResult').style.display='none'; document.getElementById('bitFecha').value=new Date().toISOString().slice(0,10); }
-function renderBitacora(entradas){
-  const lista=document.getElementById('bitLista'); if(!lista)return;
-  if(!entradas||!entradas.length){lista.innerHTML='<div class="bit-empty"><i class="ti ti-notebook" style="font-size:2.5rem;display:block;margin-bottom:10px;color:#cbd5e1"></i>Sin entradas en la bitácora.</div>';return;}
-  lista.innerHTML=entradas.map(e=>`<div class="bit-entry"><div class="bit-entry-header"><div class="bit-entry-meta"><span class="bit-entry-fecha">${e.fecha}${e.nivel?' · '+e.nivel:''}</span><span class="bit-entry-info">${e.hora||''}${e.autor?' · '+e.autor:''}</span></div><div style="display:flex;gap:8px;align-items:center">${e.fotoDataUrl?`<img class="bit-thumb" src="${e.fotoDataUrl}" onclick="verFotoCompleta('${e.id}')" title="Ver foto">`:''}  <button onclick="eliminarBitacora('${e.id}')" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px">✕</button></div></div><div class="bit-entry-texto">${e.texto}</div></div>`).join('');
+function limpiarBitacoraForm() {
+  const fe = document.getElementById('bitFecha');
+  const te = document.getElementById('bitTexto');
+  const ca = document.getElementById('bitCategoria');
+  if (te) te.value = '';
+  if (ca) ca.value = 'técnico';
+  if (fe) fe.value = new Date().toISOString().slice(0, 10);
+  const r = document.getElementById('bitResult');
+  if (r) r.style.display = 'none';
 }
-async function filtrarBitacora(){ const q=document.getElementById('bitBuscador').value.toLowerCase(),todas=await cargarBitacora(); if(!q){renderBitacora(todas);return;} renderBitacora(todas.filter(e=>(e.fecha||'').includes(q)||(e.nivel||'').toLowerCase().includes(q)||(e.texto||'').toLowerCase().includes(q)||(e.autor||'').toLowerCase().includes(q))); }
-async function eliminarBitacora(id){ if(!confirm('¿Eliminar esta entrada?'))return; const entradas=(await cargarBitacora()).filter(e=>e.id!==id); await guardarBitacoraServidor(entradas); filtrarBitacora(); }
+function renderBitacora(entradas) {
+  const lista = document.getElementById('bitLista');
+  if (!lista) return;
+  if (!entradas || !entradas.length) {
+    lista.innerHTML = '<div class="bit-empty"><i class="ti ti-notebook" style="font-size:2.5rem;display:block;margin-bottom:10px;color:#cbd5e1"></i>Sin entradas en la bitácora.</div>';
+    return;
+  }
+  lista.innerHTML = entradas.map(e => `<div class="bit-entry">
+    <div class="bit-entry-header">
+      <div class="bit-entry-meta">
+        <span class="bit-entry-fecha">${e.fecha}</span>
+        <span class="bit-entry-info">${e.categoria || e.autor || ''}</span>
+      </div>
+      <button onclick="eliminarBitacora('${e.id}')" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px">✕</button>
+    </div>
+    <div class="bit-entry-texto">${e.texto}</div>
+  </div>`).join('');
+}
+async function filtrarBitacora() {
+  const q = document.getElementById('bitBuscador').value.toLowerCase();
+  const todas = await cargarBitacora();
+  if (!q) { renderBitacora(todas); return; }
+  renderBitacora(todas.filter(e =>
+    (e.fecha||'').includes(q) ||
+    (e.categoria||'').toLowerCase().includes(q) ||
+    (e.texto||'').toLowerCase().includes(q)
+  ));
+}
+async function eliminarBitacora(id) {
+  if (!confirm('¿Eliminar esta entrada?')) return;
+  const entradas = (await cargarBitacora()).filter(e => e.id !== id);
+  _bitacoraCache = entradas;
+  await fetch(`/api/proyectos/${CC_ACTUAL}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ bitacora: entradas }) });
+  filtrarBitacora();
+}
 function verFotoCompleta(id){ const e=(_bitacoraCache||[]).find(x=>x.id===id); if(!e||!e.fotoDataUrl)return; const w=window.open('','_blank'); w.document.write('<img src="'+e.fotoDataUrl+'" style="max-width:100%;display:block;margin:auto">'); }
 async function initBitacora(){ document.getElementById('bitFecha').value=new Date().toISOString().slice(0,10); renderBitacora(await cargarBitacora()); }
 
@@ -1391,59 +1412,6 @@ function renderEdoResultados(data){
     bannerIcon.textContent = '🔴';
     bannerTit.textContent = 'Alerta: costos superan ingresos reconocidos';
     bannerTxt.textContent = `Los costos incurridos (${fmt(egresado)}) superan los ingresos por avance (${fmt(ingresos)}). Déficit: ${fmt(Math.abs(utilidadBruta))}. Revisar productividad.`;
-  }
-}
-
-// ─── Gemini modal ──────────────────────────────────────────────────────────
-const GEMINI_KEY = 'AIzaSyAQ.Ab8RN6IMQnADqjUNMmIbqV2-MQu-CktEKYtAueriucte2TVC2Q';
-let geminiContexto = {};
-
-function abrirGemini(){
-  document.getElementById('gemini-modal').style.display='flex';
-  document.getElementById('gemini-input').focus();
-}
-function cerrarGemini(){ document.getElementById('gemini-modal').style.display='none'; }
-
-async function preguntarGemini(){
-  const input = document.getElementById('gemini-input');
-  const pregunta = input.value.trim();
-  if(!pregunta) return;
-  const chat = document.getElementById('gemini-chat');
-  chat.innerHTML += `<div style="text-align:right;margin-bottom:10px"><span style="background:#1B6BB0;color:#fff;padding:8px 12px;border-radius:10px 10px 2px 10px;display:inline-block;font-size:13px;max-width:80%">${pregunta}</span></div>`;
-  input.value='';
-  chat.innerHTML += `<div id="gemini-typing" style="color:#94a3b8;font-size:13px;margin-bottom:10px">⏳ Analizando datos de la obra...</div>`;
-  chat.scrollTop = chat.scrollHeight;
-
-  const ctx = geminiContexto;
-  const prompt = `Eres el Director Financiero de Comercial Waller. Tienes acceso a los datos reales de la obra "${ctx.nombreObra || ''}".
-
-DATOS ACTUALES:
-- Contrato: ${ctx.contrato || '—'}
-- Costos egresados: ${ctx.egresado || '—'}
-- Facturado al cliente: ${ctx.facturado || '—'}
-- Avance físico: ${ctx.avancePct || '—'}%
-- Retención acumulada: ${ctx.retencion || '—'}
-- Partidas con sobrecosto: ${ctx.partidasSobrecosto || 'sin datos'}
-
-Responde en español, de forma directa y ejecutiva (máx 3 párrafos). Da tu opinión profesional, alertas y recomendaciones concretas, como si fueras el responsable financiero de la empresa.
-
-Pregunta del usuario: ${pregunta}`;
-
-  try {
-    const resp = await fetch('/api/gemini',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({prompt})
-    });
-    const json = await resp.json();
-    if(!resp.ok){ throw new Error(json.error || 'HTTP ' + resp.status); }
-    const texto = json.texto || 'Sin respuesta.';
-    document.getElementById('gemini-typing')?.remove();
-    chat.innerHTML += `<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z" fill="#1B6BB0"/></svg><span style="font-size:12px;font-weight:600;color:#1B6BB0">Director Financiero IA</span></div><div style="background:#f8fafc;border-radius:2px 10px 10px 10px;padding:10px 14px;font-size:13px;color:#1e293b;line-height:1.6;white-space:pre-wrap">${texto}</div></div>`;
-    chat.scrollTop = chat.scrollHeight;
-  } catch(e){
-    document.getElementById('gemini-typing')?.remove();
-    chat.innerHTML += `<div style="color:#dc2626;font-size:13px;margin-bottom:10px">Error: ${e.message}</div>`;
-    console.error('Gemini error:', e);
   }
 }
 
@@ -1530,7 +1498,7 @@ function renderPanelArchivos(){
     html += `<div class="arch-grupo-header"><i class="ti ${tipo.icon}"></i>${tipo.label}${tipo.multi?'<span style="font-size:10px;font-weight:400;color:#94a3b8;margin-left:4px;text-transform:none">(pueden ser varios)</span>':''}</div>`;
 
     if(tipo.virtual){
-      const n = cargarBitacora().length;
+      const n = (_bitacoraCache||[]).length;
       html += `<div class="arch-fila">
         <div class="arch-tipo">Bitácora digital</div>
         <div class="arch-secciones">${n} entradas · en este dispositivo</div>
@@ -1759,7 +1727,7 @@ function sincronizarRegistroDesdeAPI(d){
 
 function tieneArchivo(tipoId){
   const tipo = ARCHIVO_TIPOS.find(t=>t.id===tipoId);
-  if(tipo?.virtual) return tipoId==='bitacora' ? cargarBitacora().length>0 : false;
+  if(tipo?.virtual) return tipoId==='bitacora' ? (_bitacoraCache||[]).length>0 : false;
   const entry = ARCHIVOS_SERVER[tipoId];
   if(!entry) return false;
   if(Array.isArray(entry)) return entry.some(e=>e.estado!=='error');
@@ -1816,7 +1784,7 @@ function actualizarDots(){
     if(!dot){ return; }
     // Sin requisitos = bitácora, siempre gris neutro hasta que tenga entradas
     if(!v.requiere.length){
-      dot.className = cargarBitacora().length>0 ? 'tab-st ok' : 'tab-st';
+      dot.className = (_bitacoraCache||[]).length>0 ? 'tab-st ok' : 'tab-st';
       return;
     }
     const conError   = v.requiere.some(r=>tieneArchivoConError(r));

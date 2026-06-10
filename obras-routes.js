@@ -1143,6 +1143,7 @@ module.exports = function(app) {
           fechaInicio: p.fechaInicio || null,
           fechaFin: p.fechaFin || null,
           ultimaActualizacion: p.ultimaActualizacion || null,
+          _estado: p._estado || null,
         };
       });
 

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waller — Portafolio de Obras</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
+.navbar{background:#1B6BB0;color:#fff;padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.navbar-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.navbar-brand .badge{background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px;font-size:12px}
+.navbar-right{display:flex;align-items:center;gap:1rem;font-size:13px}
+.navbar-right a{color:rgba(255,255,255,0.85);text-decoration:none;display:flex;align-items:center;gap:5px}
+.navbar-right a:hover{color:#fff}
+.main{max-width:1280px;margin:0 auto;padding:1.5rem}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}
+.kpi{background:#fff;border-radius:10px;padding:1rem 1.25rem;border:1px solid #e2e8f0}
+.kpi .label{font-size:12px;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.kpi .value{font-size:24px;font-weight:600;color:#1a202c}
+.kpi .sub{font-size:12px;color:#64748b;margin-top:3px}
+.kpi.blue .value{color:#1B6BB0}
+.kpi.green .value{color:#059669}
+.kpi.amber .value{color:#d97706}
+.kpi.red .value{color:#dc2626}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;margin-top:1.5rem}
+.section-header h2{font-size:15px;font-weight:700;color:#3D4550}
+.section-header .count{background:#e2e8f0;color:#475569;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+.obras-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;margin-bottom:1.5rem}
+.obra-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:1.25rem;transition:box-shadow .2s,border-color .2s;position:relative}
+.obra-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.1);border-color:#1B6BB0}
+.obra-card.activa{border-top:4px solid #059669}
+.obra-card.cierre{border-top:4px solid #d97706}
+.obra-card.historica{border-top:4px solid #94a3b8;opacity:0.8}
+.obra-card.sin-datos{background:#fafafa}
+.obra-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.obra-nombre{font-size:16px;font-weight:700;color:#1B6BB0}
+.obra-cc{font-size:12px;color:#64748b;margin-top:2px}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.status-activa{background:#d1fae5;color:#065f46}
+.status-cierre{background:#fef3c7;color:#92400e}
+.status-historica{background:#f1f5f9;color:#475569}
+.obra-bar-wrap{background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden;margin-bottom:4px}
+.obra-bar-fill{height:100%;border-radius:4px;background:#1B6BB0}
+.obra-avance-label{font-size:11px;color:#64748b;margin-bottom:10px}
+.obra-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 16px;border:none;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px;text-decoration:none;transition:background .18s}
+.btn-primary{background:#1B6BB0;color:#fff}.btn-primary:hover{background:#155e9a}
+.btn-outline{background:transparent;color:#1B6BB0;border:1px solid #1B6BB0}.btn-outline:hover{background:#1B6BB0;color:#fff}
+.btn-disabled{background:#f1f5f9;color:#94a3b8;cursor:default;border:1px solid #e2e8f0}
+.sin-datos-msg{font-size:12px;color:#94a3b8;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.kpi-mini{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.kpi-mini-item{font-size:12px;color:#475569}
+.kpi-mini-item strong{color:#1a202c}
+.footer{text-align:center;font-size:12px;color:#94a3b8;padding:2rem 0 1rem}
+
+/* ── Botón eliminar ── */
+.btn-eliminar{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;z-index:10;line-height:1}
+.obra-card:hover .btn-eliminar{opacity:1}
+.btn-eliminar:hover{background:#fee2e2;border-color:#f87171}
+
+/* ── Modal confirmación ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:2rem;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-icon{font-size:3rem;text-align:center;margin-bottom:1rem}
+.modal-titulo{font-size:17px;font-weight:700;color:#1e293b;text-align:center;margin-bottom:.5rem}
+.modal-sub{font-size:13px;color:#64748b;text-align:center;margin-bottom:1.25rem}
+.modal-field label{display:block;font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.modal-field input{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color .2s}
+.modal-field input:focus{border-color:#dc2626}
+.modal-err{font-size:12px;color:#dc2626;margin-top:4px;display:none}
+.modal-actions{display:flex;gap:8px;margin-top:1.25rem}
+.btn-danger{background:#dc2626;color:#fff;flex:1;justify-content:center}.btn-danger:hover{background:#b91c1c}
+.btn-cancel{background:#f1f5f9;color:#475569;flex:1;justify-content:center;border:1px solid #e2e8f0}.btn-cancel:hover{background:#e2e8f0}
+
+/* ── Loading ── */
+.loading{text-align:center;padding:3rem;color:#94a3b8;font-size:14px}
+@media(max-width:600px){.main{padding:1rem}.obras-grid{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="rgba(255,255,255,0.2)"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="18" font-weight="700" fill="white">W</text></svg>
+    Waller <span class="badge">Portafolio de Obras</span>
+  </div>
+  <div class="navbar-right">
+    <a href="/portal.html"><i class="ti ti-layout-grid"></i> Portal</a>
+    <a href="/cargar.html"><i class="ti ti-upload"></i> Cargar</a>
+  </div>
+</nav>
+
+<!-- Modal eliminar -->
+<div class="modal-overlay" id="modalEliminar">
+  <div class="modal-box">
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-titulo" id="modal-titulo">Eliminar proyecto</div>
+    <div class="modal-sub" id="modal-sub">Esta acción eliminará todos los datos del proyecto del servidor. No se puede deshacer.</div>
+    <div class="modal-field">
+      <label>Contraseña de administrador</label>
+      <input type="password" id="modal-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')confirmarEliminar()">
+      <div class="modal-err" id="modal-err">Contraseña incorrecta</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarEliminar()"><i class="ti ti-trash"></i> Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="loading">Cargando portafolio...</div>
+  </div>
+  <!-- Obras -->
+  <div id="portafolio-contenido"></div>
+</div>
+<div class="footer">Waller Paneles de Concreto · Portafolio de Obras · v2.0</div>
+
+<script>
+let _ccEliminar = null;
+let _nombreEliminar = null;
+
+// ── Cargar y renderizar portafolio ─────────────────────────────────────────
+async function cargarPortafolio() {
+  try {
+    const res = await fetch('/api/corporativo/resumen');
+    const data = await res.json();
+    renderKPIs(data);
+    renderObras(data.listaProyectos || []);
+  } catch(e) {
+    document.getElementById('kpi-grid').innerHTML = '<div class="loading">Error cargando proyectos</div>';
+  }
+}
+
+function clasificar(o) {
+  if (!o.totalEgresado && !o.montoContrato) return 'sin-datos';
+  if (o._estado === 'historica' || o._estado === 'cerrada') return 'historica';
+  if (o._estado === 'cierre') return 'cierre';
+  return 'activa';
+}
+
+function fmt(n) { return n ? '$' + (n >= 1e6 ? (n/1e6).toFixed(2)+'M' : Math.round(n/1000)+'K') : '$0'; }
+
+function renderKPIs(data) {
+  const obras = data.listaProyectos || [];
+  const activas = obras.filter(o => clasificar(o) === 'activa');
+  const cierre  = obras.filter(o => clasificar(o) === 'cierre');
+  const hist    = obras.filter(o => clasificar(o) === 'historica');
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi blue"><div class="label"><i class="ti ti-building"></i> Obras activas</div><div class="value">${activas.length}</div><div class="sub">${activas.map(o=>o.nombre||'Obra '+o.cc).join(' · ')||'—'}</div></div>
+    <div class="kpi amber"><div class="label"><i class="ti ti-clock"></i> Por cerrar</div><div class="value">${cierre.length}</div><div class="sub">${cierre.map(o=>o.nombre||'Obra '+o.cc).join(' · ')||'—'}</div></div>
+    <div class="kpi"><div class="label"><i class="ti ti-archive"></i> Históricas</div><div class="value">${hist.length}</div><div class="sub">Cerradas con datos</div></div>
+    <div class="kpi blue"><div class="label"><i class="ti ti-file-invoice"></i> Contrato total</div><div class="value">${fmt(data.totalContrato||0)}</div><div class="sub">Suma de contratos</div></div>
+    <div class="kpi amber"><div class="label"><i class="ti ti-credit-card-pay"></i> Egresado total</div><div class="value">${fmt(data.totalEgresado||0)}</div><div class="sub">Según ContPAQ</div></div>
+    <div class="kpi green"><div class="label"><i class="ti ti-receipt"></i> Facturado total</div><div class="value">${fmt(data.totalFacturado||0)}</div><div class="sub">Estimaciones acumuladas</div></div>
+  `;
+}
+
+function renderObras(obras) {
+  const grupos = {
+    activa:    { label:'Obras activas',    color:'#059669', obras:[] },
+    cierre:    { label:'Obras por cerrar', color:'#d97706', obras:[] },
+    historica: { label:'Históricas',       color:'#94a3b8', obras:[] },
+    'sin-datos': { label:'Sin datos',      color:'#cbd5e1', obras:[] },
+  };
+  obras.forEach(o => grupos[clasificar(o)].obras.push(o));
+
+  let html = '';
+  for (const [tipo, grupo] of Object.entries(grupos)) {
+    if (!grupo.obras.length) continue;
+    html += `
+      <div class="section-header">
+        <span style="width:12px;height:12px;border-radius:50%;background:${grupo.color};display:inline-block"></span>
+        <h2>${grupo.label}</h2>
+        <span class="count">${grupo.obras.length}</span>
+      </div>
+      <div class="obras-grid">
+        ${grupo.obras.sort((a,b)=>(a.cc||'').localeCompare(b.cc||'')).map(o => renderCard(o, tipo)).join('')}
+      </div>`;
+  }
+  document.getElementById('portafolio-contenido').innerHTML = html || '<div class="loading">No hay proyectos registrados</div>';
+}
+
+function renderCard(o, tipo) {
+  const cc = o.cc;
+  const nombre = o.nombre || 'Obra ' + cc;
+  const contrato = fmt(o.montoContrato);
+  const egresado = fmt(o.totalEgresado);
+  const facturado = fmt(o.totalFacturado || 0);
+  const flujNeto = (o.totalFacturado || 0) - (o.totalEgresado || 0);
+  const tieneData = o.totalEgresado > 0 || o.montoContrato > 0;
+  const pctAvance = 0;
+
+  const statusMap = {
+    activa:    `<span class="status-badge status-activa"><span style="width:7px;height:7px;border-radius:50%;background:#059669;display:inline-block"></span>Activa</span>`,
+    cierre:    `<span class="status-badge status-cierre">⏳ Por cerrar</span>`,
+    historica: `<span class="status-badge status-historica">✓ Cerrada</span>`,
+    'sin-datos': `<span class="status-badge status-historica">Sin datos</span>`,
+  };
+
+  return `
+    <div class="obra-card ${tipo}${!tieneData?' sin-datos':''}">
+      <button class="btn-eliminar" onclick="pedirEliminar('${cc}','${nombre.replace(/'/g,'')}')" title="Eliminar proyecto">×</button>
+      <div class="obra-card-header">
+        <div>
+          <div class="obra-nombre">${nombre}</div>
+          <div class="obra-cc">CC ${cc}${o.cliente?' · '+o.cliente:''}${o.ubicacion?' · '+o.ubicacion:''}</div>
+        </div>
+        ${statusMap[tipo]||''}
+      </div>
+      ${tieneData ? `
+        <div class="kpi-mini">
+          <span class="kpi-mini-item"><strong>${contrato}</strong> contrato</span>
+          <span class="kpi-mini-item"><strong>${egresado}</strong> egresado</span>
+          <span class="kpi-mini-item"><strong>${facturado}</strong> facturado</span>
+          ${flujNeto < 0 ? `<span class="kpi-mini-item" style="color:#dc2626"><strong>${fmt(Math.abs(flujNeto))}</strong> financiando</span>` : `<span class="kpi-mini-item" style="color:#059669"><strong>${fmt(flujNeto)}</strong> flujo positivo</span>`}
+        </div>
+      ` : `<div class="sin-datos-msg"><i class="ti ti-info-circle"></i> Datos iniciales pendientes de captura</div>`}
+      <div class="obra-actions">
+        ${tieneData
+          ? `<a href="/obra.html?cc=${cc}" class="btn btn-primary"><i class="ti ti-chart-bar"></i> Ver dashboard</a>
+             <a href="/cargar.html?cc=${cc}" class="btn btn-outline"><i class="ti ti-upload"></i> Cargar datos</a>`
+          : `<button class="btn btn-disabled" disabled><i class="ti ti-chart-bar"></i> Ver dashboard</button>
+             <a href="/cargar.html?cc=${cc}" class="btn btn-primary"><i class="ti ti-upload"></i> Cargar datos</a>`
+        }
+      </div>
+    </div>`;
+}
+
+// ── Eliminar proyecto ──────────────────────────────────────────────────────
+function pedirEliminar(cc, nombre) {
+  _ccEliminar = cc;
+  _nombreEliminar = nombre;
+  document.getElementById('modal-titulo').textContent = `Eliminar ${nombre}`;
+  document.getElementById('modal-sub').textContent = `Se eliminarán todos los datos de ${nombre} (CC ${cc}) del servidor. Esta acción no se puede deshacer.`;
+  document.getElementById('modal-pass').value = '';
+  document.getElementById('modal-err').style.display = 'none';
+  document.getElementById('modalEliminar').classList.add('open');
+  setTimeout(() => document.getElementById('modal-pass').focus(), 100);
+}
+
+function cerrarModal() {
+  document.getElementById('modalEliminar').classList.remove('open');
+  _ccEliminar = null;
+}
+
+async function confirmarEliminar() {
+  const pass = document.getElementById('modal-pass').value;
+  const errEl = document.getElementById('modal-err');
+
+  if (pass !== 'Waller2026') {
+    errEl.textContent = 'Contraseña incorrecta';
+    errEl.style.display = 'block';
+    document.getElementById('modal-pass').focus();
+    return;
+  }
+
+  errEl.style.display = 'none';
+  const cc = _ccEliminar;
+  cerrarModal();
+
+  try {
+    const res = await fetch(`/api/proyectos/${cc}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      cargarPortafolio();
+    } else {
+      alert('Error al eliminar: ' + (data.error || 'Error desconocido'));
+    }
+  } catch(e) {
+    alert('Error de conexión');
+  }
+}
+
+// Cerrar modal al hacer click fuera
+document.getElementById('modalEliminar').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+
+// Init
+cargarPortafolio();
+</script>
+</body>
+</html>
