@@ -158,89 +158,141 @@ function parseCronograma(filePath) {
     return isFinite(n) ? n : 0;
   };
 
-  // 1. Detectar columna inicial de semanas y cantidad de semanas
-  let semanaStartCols = [];
+  // Convertir serial Excel a fecha ISO (días desde 1900-01-01, corrigiendo bug Lotus)
+  const serialToISO = serial => {
+    if (!serial || serial < 40000 || serial > 60000) return null;
+    const ms = Math.round((serial - 25569) * 86400 * 1000);
+    return new Date(ms).toISOString().slice(0, 10);
+  };
+
+  // ── 1. Detectar fila de etiquetas "Semana 1...Semana N" ──────────────────
   let semanaRowIdx = -1;
+  let semanaStartCols = []; // columna de inicio de cada semana
+  let semanaLabels   = []; // ["Semana 1", "Semana 2", ...]
+
   for (let r = 0; r < Math.min(30, rows.length); r++) {
     const row = rows[r];
+    const cols = [];
     for (let c = 0; c < row.length; c++) {
-      if (String(row[c] || '').toLowerCase().includes('semana')) {
-        semanaRowIdx = r;
-        // Recopilar todas las columnas con "semana"
-        for (let cc = c; cc < row.length; cc++) {
-          if (String(row[cc] || '').toLowerCase().includes('semana')) {
-            semanaStartCols.push(cc);
-          }
-        }
-        break;
-      }
+      if (/semana\s*\d+/i.test(String(row[c] || ''))) cols.push(c);
     }
-    if (semanaRowIdx >= 0) break;
+    if (cols.length >= 2) {
+      semanaRowIdx   = r;
+      semanaStartCols = cols;
+      semanaLabels   = cols.map(c => {
+        const raw = String(rows[r][c] || '').trim();
+        // Normalizar a "Semana N"
+        const m = raw.match(/semana\s*(\d+)/i);
+        return m ? `Semana ${parseInt(m[1])}` : raw;
+      });
+      break;
+    }
   }
 
-  // 2. Detectar columna inicial de niveles (fila con NPB)
-  let nivelesStartCol = -1;
-  for (let r = 0; r < Math.min(20, rows.length); r++) {
-    const idx = rows[r].findIndex(c => String(c).trim().toUpperCase() === 'NPB');
-    if (idx >= 0) { nivelesStartCol = idx; break; }
-  }
-  if (nivelesStartCol < 0) nivelesStartCol = 13;
+  // ── 2. Fila de fechas reales (seriales Excel, 2 filas debajo de semanas) ──
+  // Formato Matilde: fila 15 = semanas (idx 14), fila 16 = días L/M/MI..., fila 17 = fechas
+  let fechasRowIdx = -1;
+  let fechasPorCol = {}; // col → "YYYY-MM-DD"
 
-  // 3. m2 por nivel — solo filas que mencionan "cm" en col 11 o 10
-  const m2PorNivel = {};
-  for (let r = 0; r < Math.min(30, rows.length); r++) {
-    const row = rows[r];
-    const desc = String(row[11] || row[10] || '').toLowerCase();
-    if (!desc.includes('cm') || desc.includes('dias') || desc.includes('día')) continue;
-    NIVELES.forEach((nv, idx) => {
-      const v = toNum(row[nivelesStartCol + idx]);
-      if (v > 0) m2PorNivel[nv] = Math.round(((m2PorNivel[nv] || 0) + v) * 1000) / 1000;
-    });
+  if (semanaRowIdx >= 0) {
+    // Buscar en las siguientes 4 filas la que tenga seriales de fecha en las cols de semana
+    for (let r = semanaRowIdx + 1; r <= Math.min(semanaRowIdx + 4, rows.length - 1); r++) {
+      const row = rows[r];
+      let fechasEncontradas = 0;
+      for (const col of semanaStartCols) {
+        const iso = serialToISO(toNum(row[col]));
+        if (iso) { fechasPorCol[col] = iso; fechasEncontradas++; }
+      }
+      if (fechasEncontradas >= 2) { fechasRowIdx = r; break; }
+    }
   }
 
-  // 4. Programa semanal por nivel
-  // El formato real de Waller tiene el nivel en col A (idx 0), no en col B
-  const programaSemanal = {};
+  // ── 3. Detectar columna de inicio de datos de días (primera col con días L,M,MI,J,V,S) ──
+  // En el formato Matilde, las columnas de días dentro de cada semana son continuas
+  // La columna de "inicio de semana" es la primera del grupo de días de esa semana
+  // semanaStartCols ya apunta a esas columnas correctas desde el header
+
+  // ── 4. Calcular m² totales por semana: buscar filas de niveles ───────────
+  // Formato: filas 19,30,41... cada 11 filas tiene el nivel (NPB,N1...) en col 0 o 1
+  // Cada fila de nivel tiene m² por día en las columnas de días; sumar por semana
+
+  // Primero detectar qué columnas pertenecen a cada semana
+  // Las columnas de días van desde semanaStartCols[i] hasta semanaStartCols[i+1]-1
+  // (o hasta el fin del rango para la última semana)
+  const semanasRanges = semanaStartCols.map((startCol, i) => {
+    const endCol = (i + 1 < semanaStartCols.length) ? semanaStartCols[i + 1] - 1 : startCol + 6;
+    return { label: semanaLabels[i], startCol, endCol };
+  });
+
+  // Buscar filas de niveles (col 0 o 1 tiene un nivel conocido)
+  const m2PorNivel   = {};
+  const programaSemanalPorNivel = {}; // nivel → { "Semana 1": total, ... }
+
   for (let r = 0; r < rows.length; r++) {
-    const row = rows[r];
-    // Buscar nivel en col A o col B
+    const row  = rows[r];
     const colA = String(row[0] || '').trim().toUpperCase();
     const colB = String(row[1] || '').trim().toUpperCase();
     const nivel = NIVELES.includes(colA) ? colA : NIVELES.includes(colB) ? colB : null;
     if (!nivel) continue;
-    programaSemanal[nivel] = {};
-    semanaStartCols.forEach((startCol, semIdx) => {
-      // El valor de la semana está en la primera columna del grupo (no suma días)
-      const v = toNum(row[startCol]);
-      if (v > 0) programaSemanal[nivel]['S' + (semIdx + 1)] = Math.round(v * 10) / 10;
+
+    programaSemanalPorNivel[nivel] = {};
+    let totalNivel = 0;
+
+    semanasRanges.forEach(({ label, startCol, endCol }) => {
+      let sumaSemana = 0;
+      for (let c = startCol; c <= endCol; c++) {
+        sumaSemana += toNum(row[c]);
+      }
+      if (sumaSemana > 0) {
+        programaSemanalPorNivel[nivel][label] = Math.round(sumaSemana * 100) / 100;
+        totalNivel += sumaSemana;
+      }
     });
+
+    if (totalNivel > 0) m2PorNivel[nivel] = Math.round(totalNivel * 100) / 100;
   }
 
-  // 5. Fecha de inicio — fila de seriales de fecha justo debajo de "Semana 1"
+  // ── 5. Consolidar programaSemanal como totales por semana (suma de todos los niveles) ──
+  const programaSemanal = {};
+  semanasRanges.forEach(({ label }) => {
+    const total = Object.values(programaSemanalPorNivel).reduce((sum, nvObj) => {
+      return sum + (nvObj[label] || 0);
+    }, 0);
+    if (total > 0) programaSemanal[label] = Math.round(total * 100) / 100;
+  });
+
+  // ── 6. Fecha de inicio y fin ──────────────────────────────────────────────
   let fechaInicio = null;
-  if (semanaRowIdx >= 0) {
-    // Buscar la fila de seriales (números > 40000 = fechas Excel post-2009)
+  let fechaFin    = null;
+
+  if (Object.keys(fechasPorCol).length > 0) {
+    const colsSorted = Object.keys(fechasPorCol).map(Number).sort((a, b) => a - b);
+    fechaInicio = fechasPorCol[colsSorted[0]];
+    fechaFin    = fechasPorCol[colsSorted[colsSorted.length - 1]];
+  }
+
+  // Fallback: buscar serial en fila justo debajo de semanaRowIdx
+  if (!fechaInicio && semanaRowIdx >= 0) {
     for (let r = semanaRowIdx + 1; r < Math.min(semanaRowIdx + 5, rows.length); r++) {
       const row = rows[r];
-      for (let c = 0; c < row.length; c++) {
-        const v = toNum(row[c]);
-        if (v > 40000 && v < 60000) {
-          // Convertir serial Excel a fecha ISO
-          const ms = Math.round((v - 25569) * 86400 * 1000);
-          fechaInicio = new Date(ms).toISOString().slice(0, 10);
-          break;
-        }
+      for (const col of semanaStartCols) {
+        const iso = serialToISO(toNum(row[col]));
+        if (iso) { fechaInicio = iso; break; }
       }
       if (fechaInicio) break;
     }
   }
 
+  const totalM2 = Math.round(Object.values(m2PorNivel).reduce((s, v) => s + v, 0) * 100) / 100;
+
   return {
     m2PorNivel,
     programaSemanal,
-    totalM2: Math.round(Object.values(m2PorNivel).reduce((s, v) => s + v, 0) * 100) / 100,
-    totalSemanas: semanaStartCols.length || 15,
-    ...(fechaInicio ? { fechaInicio } : {})
+    programaSemanalPorNivel,
+    totalM2,
+    totalSemanas: semanasRanges.length || semanaStartCols.length || 15,
+    ...(fechaInicio ? { fechaInicio } : {}),
+    ...(fechaFin    ? { fechaFin }    : {})
   };
 }
 
@@ -487,8 +539,32 @@ function parseCotizacionWaller(filePath) {
   const toNum = v => { const n = parseFloat(String(v||'').replace(/,/g,'')); return isFinite(n) ? n : 0; };
 
   // ── Hoja "Waller": paneles por sección ────────────────────────────────────
-  const wsW = wb.Sheets['Waller'] || wb.Sheets[wb.SheetNames[0]];
+  // Intentar hoja "Waller" primero; si no existe, usar la primera hoja que no sea "COM" ni especial
+  let wsW = wb.Sheets['Waller'];
+  if (!wsW) {
+    const hojasEspeciales = ['COM','M O','FL','Ind of cen (2)','In cam (2)','Uti y Res (2)'];
+    const hojaPanel = wb.SheetNames.find(n => !hojasEspeciales.includes(n));
+    wsW = wb.Sheets[hojaPanel || wb.SheetNames[0]];
+  }
   const rowsW = XLSX.utils.sheet_to_json(wsW, { header:1, defval:'' });
+
+  // Detectar columnas de datos: buscar fila de cabecera con "M2", "PRECIO", "IMPORTE"
+  // Para ser robusto, detectar dinámicamente qué columna tiene el importe
+  let colM2 = 2, colPrecio = 3, colImporte = 4; // defaults formato estándar
+  for (let i = 0; i < Math.min(20, rowsW.length); i++) {
+    const r = rowsW[i];
+    for (let c = 0; c < r.length; c++) {
+      const cell = String(r[c]||'').toUpperCase().trim();
+      if (/^M\.?\s*2$|^M2$|^METROS?$/.test(cell)) colM2 = c;
+      if (/PRECIO|P\.U\.|UNIT/.test(cell)) colPrecio = c;
+      if (/IMPORTE|TOTAL|MONTO/.test(cell) && c > colM2) { colImporte = c; break; }
+    }
+  }
+
+  // Regex flexible para detectar encabezados de sección de paneles
+  // Acepta: "Muros Divisorios", "MUROS FACHADAS", "Panel Losa", "Losas", etc.
+  const esEncabezadoSeccion = (s) =>
+    /^(muros?|panel(es)?|losas?|fachadas?|divisori|interior|exterior|detalles?|azotea|cubierta)/i.test(s);
 
   const secciones = [];
   let seccionActual = null;
@@ -497,27 +573,50 @@ function parseCotizacionWaller(filePath) {
     const r = rowsW[i];
     const col0 = String(r[0]||'').trim();
     const col1 = String(r[1]||'').trim();
+    const col2 = String(r[2]||'').trim(); // a veces el nombre de sección está en col2
 
-    // Detectar encabezado de sección (ej. "Muros Divisorios", "Muros Fachadas")
-    if (/^muros\s+(divisorios|interiores|fachadas|detalles|losas)/i.test(col1) && !col0) {
+    // ── Detectar encabezado de sección ──────────────────────────────────────
+    // Caso 1: col1 tiene nombre y col0 está vacío (formato estándar)
+    if (!col0 && esEncabezadoSeccion(col1) && toNum(r[colImporte]) === 0) {
       seccionActual = { seccion: col1, conceptos: [], totalM2: 0, totalImporte: 0 };
       secciones.push(seccionActual);
       continue;
     }
+    // Caso 2: col0 tiene nombre de sección directamente y no es código numérico
+    if (col0 && esEncabezadoSeccion(col0) && !/^\d+$/.test(col0) && toNum(r[colImporte]) === 0) {
+      seccionActual = { seccion: col0, conceptos: [], totalM2: 0, totalImporte: 0 };
+      secciones.push(seccionActual);
+      continue;
+    }
+    // Caso 3: col2 tiene nombre de sección (col0 y col1 vacíos)
+    if (!col0 && !col1 && esEncabezadoSeccion(col2) && toNum(r[colImporte]) === 0) {
+      seccionActual = { seccion: col2, conceptos: [], totalM2: 0, totalImporte: 0 };
+      secciones.push(seccionActual);
+      continue;
+    }
 
-    // Detectar fila de datos: col0 es número de código, col4 es importe > 0
-    if (seccionActual && /^\d+$/.test(col0) && col1 && toNum(r[4]) > 0) {
-      const m2      = toNum(r[2]);
-      const precioM2 = toNum(r[3]);
-      const importe  = toNum(r[4]);
-      seccionActual.conceptos.push({ codigo: col0, concepto: col1, m2, precioM2, importe });
+    // ── Detectar fila de datos ───────────────────────────────────────────────
+    // col0 es código numérico O col0 vacío con col1 como descripción y hay importe
+    const tieneImporte = toNum(r[colImporte]) > 0;
+    const esFilaDatos = tieneImporte && (
+      (/^\d+$/.test(col0) && col1) ||          // código + descripción
+      (!col0 && col1 && !/total/i.test(col1))   // sin código pero con descripción
+    );
+
+    if (seccionActual && esFilaDatos) {
+      const m2       = toNum(r[colM2]);
+      const precioM2 = toNum(r[colPrecio]);
+      const importe  = toNum(r[colImporte]);
+      const codigo   = /^\d+$/.test(col0) ? col0 : '';
+      const concepto = col1 || col0;
+      seccionActual.conceptos.push({ codigo, concepto, m2, precioM2, importe });
       seccionActual.totalM2      += m2;
       seccionActual.totalImporte += importe;
     }
 
-    // Fila de total de sección
-    if (/total/i.test(col1) && toNum(r[4]) > 0 && seccionActual) {
-      seccionActual.totalImporte = toNum(r[4]); // usar el total calculado en el archivo
+    // ── Fila de total de sección ─────────────────────────────────────────────
+    if (/total/i.test(col0 + col1) && tieneImporte && seccionActual) {
+      seccionActual.totalImporte = toNum(r[colImporte]);
     }
   }
 
