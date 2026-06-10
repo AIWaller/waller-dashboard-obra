@@ -958,6 +958,7 @@ async function subirContpaq(file) {
 
 // ── Subir archivo por obra ─────────────────────────────────────────────────
 async function subirArchivo(tipo, file) {
+  if (tipo === 'contrato') { await subirContrato(file); return; }
   if (!file || !CC_ACTUAL) { toast('Selecciona una obra primero', 'err'); return; }
   mostrarLoading('Procesando ' + tipo + '...');
   const fd = new FormData();
@@ -997,6 +998,154 @@ async function subirArchivo(tipo, file) {
   } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
 }
 
+// ── Contrato — upload con revisión de campos ───────────────────────────────
+async function subirContrato(file) {
+  if (!file || !CC_ACTUAL) { toast('Selecciona una obra primero', 'err'); return; }
+  mostrarLoading('Extrayendo datos del contrato...');
+  const fd = new FormData();
+  fd.append('archivo', file);
+  try {
+    const res = await fetch(`/api/upload/contrato/${CC_ACTUAL}`, { method: 'POST', body: fd });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok !== false) {
+      document.getElementById('status-contrato').innerHTML = '<span class="badge-warn">⚠ Revisar</span>';
+      document.getElementById('meta-contrato').textContent = file.name + ' · Pendiente confirmación';
+      mostrarFormContratoRevision(data);
+    } else {
+      toast(data.error || 'Error al procesar contrato', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function mostrarFormContratoRevision(data) {
+  const val = k => data.campos?.[k]?.valor ?? '';
+  const resultEl = document.getElementById('result-contrato');
+  if (!resultEl) return;
+  const tipoVal = String(val('tipoContrato')||'');
+  resultEl.innerHTML = `
+    <div style="margin-top:.75rem;background:#f0f9ff;border:1px solid #bfdbfe;border-radius:10px;padding:1rem">
+      <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:.5rem">
+        📋 Revisar datos extraídos
+        <span style="font-weight:400;color:#64748b;font-size:12px">— ${data.camposDetectados||0} campos detectados automáticamente</span>
+      </div>
+      ${data.aviso ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;font-size:12px;color:#854d0e;margin-bottom:.75rem">⚠ ${data.aviso}</div>` : ''}
+      <div class="field-grid">
+        <div class="field" style="grid-column:1/-1">
+          <label>Cliente / Razón social</label>
+          <input type="text" id="cc-cliente" value="${escHtml(val('razonSocialCliente'))}" placeholder="Nombre de la empresa o persona">
+        </div>
+        <div class="field">
+          <label>RFC del cliente</label>
+          <input type="text" id="cc-rfc" value="${escHtml(val('rfcCliente'))}" placeholder="Ej: CED180801124">
+        </div>
+        <div class="field">
+          <label>Representante legal</label>
+          <input type="text" id="cc-rep" value="${escHtml(val('repLegalCliente'))}" placeholder="Nombre del representante">
+        </div>
+        <div class="field">
+          <label>Monto del contrato $</label>
+          <input type="number" id="cc-monto" value="${escHtml(String(val('montoContrato')||''))}" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Tipo de contrato</label>
+          <select id="cc-tipo">
+            <option value="">— Sin especificar —</option>
+            <option value="Precio Alzado" ${tipoVal.includes('Alzado')?'selected':''}>Precio Alzado</option>
+            <option value="Por Administración" ${tipoVal.includes('dministr')?'selected':''}>Por Administración</option>
+            <option value="Precio Unitario" ${tipoVal.includes('Unitario')?'selected':''}>Precio Unitario</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fecha inicio</label>
+          <input type="date" id="cc-inicio" value="${escHtml(String(val('fechaInicio')||''))}">
+        </div>
+        <div class="field">
+          <label>Fecha fin</label>
+          <input type="date" id="cc-fin" value="${escHtml(String(val('fechaTerminacion')||''))}">
+        </div>
+        <div class="field">
+          <label>Plazo (días)</label>
+          <input type="number" id="cc-plazo" value="${escHtml(String(val('plazoEjecucionDias')||''))}" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Anticipo %</label>
+          <input type="number" id="cc-anticipo" value="${escHtml(String(val('anticipoPct')||''))}" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Retención %</label>
+          <input type="number" id="cc-retencion-pct" value="${escHtml(String(val('retencionPct')||''))}" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Banco</label>
+          <input type="text" id="cc-banco" value="${escHtml(val('banco'))}" placeholder="Nombre del banco">
+        </div>
+        <div class="field">
+          <label>CLABE</label>
+          <input type="text" id="cc-clabe" value="${escHtml(val('clabe'))}" placeholder="18 dígitos">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="confirmarContrato()">
+          <i class="ti ti-check"></i> Confirmar y guardar contrato
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelarRevisionContrato()">Cancelar</button>
+      </div>
+    </div>
+  `;
+}
+
+async function confirmarContrato() {
+  if (!CC_ACTUAL) { toast('Selecciona una obra', 'err'); return; }
+  const g  = id => document.getElementById(id)?.value?.trim() || null;
+  const gn = id => { const v = parseFloat(document.getElementById(id)?.value); return isFinite(v) && v > 0 ? v : null; };
+  const payload = {};
+  if (g('cc-cliente'))       payload.cliente           = g('cc-cliente');
+  if (g('cc-rfc'))           payload.rfcCliente         = g('cc-rfc');
+  if (g('cc-rep'))           payload.repLegalCliente    = g('cc-rep');
+  if (gn('cc-monto'))        payload.montoContrato      = gn('cc-monto');
+  if (g('cc-tipo'))          payload.tipoContrato       = g('cc-tipo');
+  if (g('cc-inicio'))        payload.fechaInicio        = g('cc-inicio');
+  if (g('cc-fin'))           payload.fechaFin           = g('cc-fin');
+  if (gn('cc-plazo'))        payload.plazoEjecucionDias = gn('cc-plazo');
+  if (gn('cc-anticipo'))     payload.anticipoPct        = gn('cc-anticipo');
+  if (gn('cc-retencion-pct'))payload.retencionPct       = gn('cc-retencion-pct');
+  if (g('cc-banco'))         payload.banco              = g('cc-banco');
+  if (g('cc-clabe'))         payload.clabe              = g('cc-clabe');
+
+  mostrarLoading('Guardando contrato...');
+  try {
+    const res = await fetch(`/api/proyectos/${CC_ACTUAL}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok) {
+      document.getElementById('status-contrato').innerHTML = '<span class="badge-ok">✓ Guardado</span>';
+      document.getElementById('meta-contrato').textContent = 'Contrato confirmado · ' + new Date().toLocaleDateString('es-MX');
+      document.getElementById('result-contrato').innerHTML =
+        '<div style="margin-top:.5rem;font-size:12px;color:#166534;font-weight:600">✅ Contrato guardado y campos confirmados</div>';
+      toast('Contrato guardado correctamente', 'ok');
+      await cargarListaObras(CC_ACTUAL);
+      cargarArchivosMeta();
+    } else {
+      toast(data.error || 'Error al guardar', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+function cancelarRevisionContrato() {
+  document.getElementById('result-contrato').innerHTML = '';
+  document.getElementById('status-contrato').innerHTML = '<span class="badge-empty">Vacío</span>';
+  document.getElementById('meta-contrato').textContent = 'Sin cargar';
+}
+
 // ── Estimaciones ───────────────────────────────────────────────────────────
 function renderEstimaciones(proj) {
   if (!proj?.estimaciones?.length) return;
@@ -1011,7 +1160,7 @@ function renderEstimaciones(proj) {
       <td>${e.periodoDesde||''}${e.periodoHasta?' – '+e.periodoHasta:''}</td>
       <td class="num">${fmt(e.estaEstimacion||e.montoEstimacion)}</td>
       <td class="num">${fmt(e.acumActual)}</td>
-      <td class="num" style="color:#dc2626">${fmt(e.retencion)}</td>
+      <td class="num" style="color:#dc2626">${fmt(e.retencionEsta || e.retencion)}</td>
       <td class="num" style="color:#059669">${fmt(e.netoPagar||e.importePagar)}</td>
       <td>${Math.round(e.m2Esta||0)} m²</td>
       <td>${Math.round(e.m2Acum||0)} m²</td>
