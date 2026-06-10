@@ -19,7 +19,11 @@ const uploadContrato = multer({
       cb(null, `${cc}-contrato${ext}`);
     }
   }),
-  fileFilter: (req, file, cb) => cb(null, /pdf/i.test(file.mimetype) || file.originalname.toLowerCase().endsWith('.pdf'))
+  fileFilter: (req, file, cb) => {
+    const name = file.originalname.toLowerCase();
+    const ok = /pdf/i.test(file.mimetype) || name.endsWith('.pdf') || name.endsWith('.docx') || name.endsWith('.doc');
+    cb(null, ok);
+  }
 });
 
 const OBRA_NAMES = {
@@ -673,6 +677,17 @@ async function extraerTextoPDF(filePath, maxPaginas = 5) {
     return '';
   } finally {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e) {}
+  }
+}
+
+// Extrae texto de archivo Word (.docx / .doc) usando mammoth
+async function extraerTextoDocx(filePath) {
+  const mammoth = require('mammoth');
+  try {
+    const result = await mammoth.extractRawText({ path: filePath });
+    return result.value || '';
+  } catch(e) {
+    return '';
   }
 }
 
@@ -1819,17 +1834,24 @@ module.exports = function(app) {
   // ── Google Sheets — Avance diario ─────────────────────────────────────────
   // ── Upload Contrato PDF — guarda archivo + extrae campos ─────────────────
   app.post('/api/upload/contrato/:cc', uploadContrato.single('archivo'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No se recibió el archivo PDF' });
+    if (!req.file) return res.status(400).json({ error: 'No se recibió el archivo de contrato' });
     const { cc } = req.params;
     try {
-      // Ruta permanente del PDF
+      // Ruta permanente del archivo
       const archivoPdf = `/uploads/contratos/${req.file.filename}`;
 
-      // Extraer texto completo
-      const textoCompleto = await extraerTextoPDF(req.file.path);
+      // Extraer texto según tipo de archivo
+      const ext = path.extname(req.file.originalname || req.file.filename).toLowerCase();
+      const esWord = ext === '.docx' || ext === '.doc';
+      const textoCompleto = esWord
+        ? await extraerTextoDocx(req.file.path)
+        : await extraerTextoPDF(req.file.path);
+
       if (!textoCompleto) {
         return res.json({ ok: true, archivoPdf, textoCompleto: '', camposDetectados: 0,
-          campos: {}, aviso: 'El PDF no tiene texto extraíble (posiblemente escaneado). Llena los campos manualmente.' });
+          campos: {}, aviso: esWord
+            ? 'No se pudo extraer texto del archivo Word. Verifica que sea un .docx válido y llena los campos manualmente.'
+            : 'El PDF no tiene texto extraíble (posiblemente escaneado). Llena los campos manualmente.' });
       }
 
       // Aplicar regex a los 31 campos

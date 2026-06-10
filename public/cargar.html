@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waller — Centro de Carga</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
+
+/* ── Navbar ── */
+.navbar{background:#1B6BB0;color:#fff;padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.navbar-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.navbar-brand .badge{background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px;font-size:12px}
+.navbar-right a{color:rgba(255,255,255,0.85);text-decoration:none;font-size:13px;display:flex;align-items:center;gap:5px;margin-left:1.25rem}
+.navbar-right{display:flex;align-items:center}
+.navbar-right a:hover{color:#fff}
+
+/* ── Layout ── */
+.main{max-width:1100px;margin:0 auto;padding:1.5rem}
+
+/* ── Modo tabs ── */
+.modo-tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:1.5rem}
+.modo-tab{padding:1rem 1.25rem;cursor:pointer;display:flex;align-items:center;gap:10px;border:none;background:transparent;font-size:13px;font-weight:600;color:#64748b;transition:all .2s;border-right:1px solid #e2e8f0;width:100%}
+.modo-tab:last-child{border-right:none}
+.modo-tab .tab-icon{font-size:1.4rem;flex-shrink:0}
+.modo-tab .tab-text{text-align:left}
+.modo-tab .tab-text small{display:block;font-size:11px;font-weight:400;margin-top:1px;opacity:.8}
+.modo-tab.active{background:#1B6BB0;color:#fff}
+.modo-tab.active .tab-text small{opacity:.85}
+
+/* ── Sección ── */
+.seccion{display:none}
+.seccion.active{display:block}
+
+/* ── Cards ── */
+.card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:14px;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.card-subtitle{font-size:12px;color:#64748b;margin-top:2px;font-weight:400}
+
+/* ── Grid slots ── */
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;margin-bottom:1rem}
+.slot{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden}
+.slot-header{padding:.9rem 1.1rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f1f5f9}
+.slot-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.slot-info{flex:1;min-width:0}
+.slot-info h3{font-size:13px;font-weight:700;color:#1e293b}
+.slot-info p{font-size:11px;color:#94a3b8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-status{flex-shrink:0}
+.slot-body{padding:.9rem 1.1rem}
+
+/* ── Badges ── */
+.badge-ok{background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-warn{background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-empty{background:#f1f5f9;color:#94a3b8;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-new{background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.slot-required{border:2px solid #fca5a5 !important;transition:border-color .3s}
+.slot-required.completado{border-color:#86efac !important}
+.field-required input{border-color:#fca5a5 !important;transition:border-color .3s}
+.field-required.completado input{border-color:#86efac !important}
+.req-label{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+.req-pendiente{background:#fee2e2;color:#dc2626}
+.req-ok{background:#dcfce7;color:#166534}
+
+/* ── Upload area ── */
+.upload-area{border:2px dashed #cbd5e1;border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;position:relative;transition:all .2s}
+.upload-area:hover,.upload-area.over{border-color:#1B6BB0;background:#eff6ff}
+.upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-area .ua-icon{font-size:1.6rem;margin-bottom:4px;color:#94a3b8}
+.upload-area p{font-size:11px;color:#64748b}
+.upload-area strong{font-size:12px;color:#374151;display:block;margin-bottom:2px}
+
+/* ── Botones ── */
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;text-decoration:none}
+.btn-primary{background:#1B6BB0;color:#fff}.btn-primary:hover{background:#155e9a}
+.btn-success{background:#059669;color:#fff}.btn-success:hover{background:#047857}
+.btn-ghost{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}.btn-ghost:hover{background:#e2e8f0}
+.btn-danger{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}.btn-danger:hover{background:#fee2e2}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-lg{padding:12px 24px;font-size:14px}
+
+/* ── Obra selector bar ── */
+.obra-bar{background:#fff;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;flex-wrap:wrap;gap:.75rem}
+.obra-bar-title{font-size:17px;font-weight:700;color:#1B6BB0}
+.obra-bar-meta{font-size:12px;color:#64748b;margin-top:2px}
+.obra-select-wrap{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px}
+.obra-select-wrap select{background:transparent;border:none;font-size:13px;font-weight:600;color:#1e293b;outline:none;cursor:pointer}
+
+/* ── Fields ── */
+.field{margin-bottom:.9rem}
+.field label{display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;transition:border-color .2s;background:#fff}
+.field input:focus,.field select:focus{border-color:#1B6BB0}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ── URL row ── */
+.url-row{display:flex;gap:8px;align-items:center}
+.url-row input{flex:1;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none}
+.url-row input:focus{border-color:#059669}
+
+/* ── Wizard nueva obra ── */
+.wizard-steps{display:flex;gap:0;margin-bottom:1.5rem;position:relative}
+.wizard-steps::before{content:'';position:absolute;top:20px;left:0;right:0;height:2px;background:#e2e8f0;z-index:0}
+.wstep{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1}
+.wstep-num{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#e2e8f0;color:#94a3b8;border:3px solid #f0f4f8;transition:all .3s}
+.wstep.active .wstep-num{background:#1B6BB0;color:#fff}
+.wstep.done .wstep-num{background:#059669;color:#fff}
+.wstep-label{font-size:11px;font-weight:600;color:#94a3b8;text-align:center}
+.wstep.active .wstep-label,.wstep.done .wstep-label{color:#1e293b}
+.wizard-panel{display:none}
+.wizard-panel.active{display:block}
+
+/* ── VoBo / Resumen ── */
+.vobo-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.vobo-box h3{font-size:14px;font-weight:700;color:#166534;margin-bottom:.75rem;display:flex;align-items:center;gap:6px}
+.vobo-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #dcfce7;font-size:13px}
+.vobo-row:last-child{border-bottom:none}
+.vobo-label{color:#475569}
+.vobo-value{font-weight:600;color:#1e293b}
+.vobo-alert{background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;font-size:12px;color:#854d0e;display:flex;gap:8px;align-items:flex-start}
+
+/* ── Tabla archivos ── */
+.arch-table{width:100%;border-collapse:collapse;font-size:13px}
+.arch-table th{background:#f8fafc;padding:8px 12px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0}
+.arch-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.arch-table tr:last-child td{border-bottom:none}
+.arch-table .num{text-align:right}
+
+/* ── Cobertura ── */
+.cobertura-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.5rem}
+.cob-item{display:flex;align-items:center;gap:8px;padding:.6rem .9rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:12px;font-weight:600}
+.cob-item.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+.cob-item.empty{color:#94a3b8}
+
+/* ── Loading ── */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.88);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+.loading-overlay.open{display:flex}
+.spinner{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#1B6BB0;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading-text{font-size:14px;color:#475569;font-weight:500}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:400;display:none;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);max-width:380px}
+.toast.show{display:flex}
+.toast.ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.toast.err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.toast.warn{background:#fefce8;color:#854d0e;border:1px solid #fde68a}
+
+/* ── Info box ── */
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.75rem 1rem;font-size:12px;color:#1d4ed8;display:flex;gap:8px;align-items:flex-start;margin-bottom:1rem}
+
+/* ── Estimaciones tabla ── */
+.est-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:.75rem}
+.est-table th{background:#f8fafc;padding:8px 12px;text-align:left;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0}
+.est-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9}
+.est-table tr:last-child td{border-bottom:none}
+.est-table .num{text-align:right}
+
+/* ── Divider ── */
+.divider{border:none;border-top:1px solid #e2e8f0;margin:1rem 0}
+
+@media(max-width:700px){
+  .slots{grid-template-columns:1fr}
+  .field-grid,.field-grid-3{grid-template-columns:1fr}
+  .modo-tabs{grid-template-columns:1fr}
+  .modo-tab{border-right:none;border-bottom:1px solid #e2e8f0}
+}
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <svg width="28" height="28" viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="8" fill="rgba(255,255,255,0.2)"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="18" font-weight="700" fill="white">W</text></svg>
+    Waller <span class="badge">Centro de Carga</span>
+  </div>
+  <div class="navbar-right">
+    <a href="/obras.html"><i class="ti ti-building"></i> Portafolio</a>
+    <a href="/obra.html"><i class="ti ti-chart-bar"></i> Dashboard</a>
+  </div>
+</nav>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div id="loading-text">Procesando...</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<div class="main">
+
+  <!-- ══ MODO TABS ══ -->
+  <div class="modo-tabs">
+    <button class="modo-tab active" onclick="setModo('general')" id="tab-general">
+      <span class="tab-icon">🗂️</span>
+      <span class="tab-text">Catálogo / Libros auxiliares<small>Catálogo de cuentas · ContPAQ</small></span>
+    </button>
+    <button class="modo-tab" onclick="setModo('obra')" id="tab-obra">
+      <span class="tab-icon"><i class="ti ti-refresh" style="font-size:1.4rem"></i></span>
+      <span class="tab-text">Actualizar por obra<small>Estimaciones · Avance · Contrato · Cambios</small></span>
+    </button>
+    <button class="modo-tab" onclick="setModo('nueva')" id="tab-nueva">
+      <span class="tab-icon">🏗️</span>
+      <span class="tab-text">Registrar nueva obra<small>Cotización · Contrato · Cronograma</small></span>
+    </button>
+    <button class="modo-tab" onclick="setModo('archivos')" id="tab-archivos">
+      <span class="tab-icon"><i class="ti ti-files" style="font-size:1.4rem"></i></span>
+      <span class="tab-text">Archivos<small>Historial · Resumen por proyecto</small></span>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECCIÓN 1 — ACTUALIZAR TODAS LAS OBRAS
+  ══════════════════════════════════════════════════════ -->
+  <div class="seccion active" id="sec-general">
+
+    <div class="info-box">
+      <i class="ti ti-info-circle" style="font-size:1.1rem;flex-shrink:0;margin-top:1px"></i>
+      <span>Estos archivos actualizan <strong>todos los proyectos</strong> al mismo tiempo. No necesitas seleccionar una obra.</span>
+    </div>
+
+    <div class="slots">
+
+      <!-- Catálogo de cuentas -->
+      <div class="slot" id="slot-catalogo">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#e0e7ff">📋</div>
+          <div class="slot-info">
+            <h3>Catálogo de cuentas</h3>
+            <p id="meta-catalogo">Sin cargar</p>
+          </div>
+          <div class="slot-status" id="status-catalogo"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div class="info-box" style="margin-bottom:.75rem">
+            <i class="ti ti-info-circle" style="font-size:1rem;flex-shrink:0"></i>
+            <span>Las cuentas nuevas se agregan al sistema. Las existentes se usan como referencia.</span>
+          </div>
+          <div class="upload-area" id="drop-catalogo">
+            <input type="file" accept=".xlsx,.xls" onchange="subirCatalogo(this.files[0])">
+            <div class="ua-icon"><i class="ti ti-list"></i></div>
+            <strong>Arrastra el catálogo aquí</strong>
+            <p>Listado de Cuentas · .xlsx</p>
+          </div>
+          <div id="result-catalogo"></div>
+        </div>
+      </div>
+
+      <!-- Libro auxiliar ContPAQ -->
+      <div class="slot" id="slot-contpaq">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#dbeafe">🗂️</div>
+          <div class="slot-info">
+            <h3>Libro auxiliar ContPAQ</h3>
+            <p id="meta-contpaq">Sin cargar</p>
+          </div>
+          <div class="slot-status" id="status-contpaq"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div class="upload-area" id="drop-contpaq">
+            <input type="file" accept=".xlsx,.xls" onchange="subirContpaq(this.files[0])">
+            <div class="ua-icon"><i class="ti ti-table"></i></div>
+            <strong>Arrastra el libro auxiliar aquí</strong>
+            <p>Export de ContPAQ · .xlsx</p>
+          </div>
+          <div id="result-contpaq"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Cobertura global -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-checklist"></i> Cobertura por proyecto</div>
+      <div id="cobertura-global">
+        <div style="color:#94a3b8;font-size:13px">Cargando proyectos...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECCIÓN 2 — ACTUALIZAR POR OBRA
+  ══════════════════════════════════════════════════════ -->
+  <div class="seccion" id="sec-obra">
+
+    <!-- Selector de obra -->
+    <div class="obra-bar">
+      <div>
+        <div class="obra-bar-title" id="obraNombre">Selecciona una obra</div>
+        <div class="obra-bar-meta">Actualizando datos de esta obra específica</div>
+      </div>
+      <div class="obra-select-wrap">
+        <i class="ti ti-building" style="color:#1B6BB0"></i>
+        <select id="ccSelector" onchange="cambiarObra()"></select>
+      </div>
+    </div>
+
+    <div class="slots">
+
+      <!-- Contrato PDF -->
+      <div class="slot">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#fce7f3">📄</div>
+          <div class="slot-info">
+            <h3>Contrato</h3>
+            <p id="meta-contrato">Sin cargar</p>
+          </div>
+          <div class="slot-status" id="status-contrato"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div class="upload-area">
+            <input type="file" accept=".pdf,.doc,.docx" onchange="subirArchivo('contrato', this.files[0])">
+            <div class="ua-icon"><i class="ti ti-file-text"></i></div>
+            <strong>Arrastra el contrato aquí</strong>
+            <p>Formato .pdf, .doc o .docx</p>
+          </div>
+          <div id="result-contrato"></div>
+        </div>
+      </div>
+
+      <!-- Cotización -->
+      <div class="slot">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#fef9c3">💰</div>
+          <div class="slot-info">
+            <h3>Cotización / Precios unitarios</h3>
+            <p id="meta-cotizacion">Sin cargar</p>
+          </div>
+          <div class="slot-status" id="status-cotizacion"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div class="upload-area">
+            <input type="file" accept=".xlsx,.xls" onchange="subirArchivo('cotizacion', this.files[0])">
+            <div class="ua-icon"><i class="ti ti-calculator"></i></div>
+            <strong>Arrastra la cotización aquí</strong>
+            <p>Formato .xlsx</p>
+          </div>
+          <div id="result-cotizacion"></div>
+        </div>
+      </div>
+
+      <!-- Programa de obra -->
+      <div class="slot">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#fef9c3">📅</div>
+          <div class="slot-info">
+            <h3>Programa de obra</h3>
+            <p id="meta-cronograma">Sin cargar</p>
+          </div>
+          <div class="slot-status" id="status-cronograma"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div class="url-row" style="margin-bottom:.6rem">
+            <input type="text" id="cronograma-url" placeholder="URL de Google Sheets...">
+            <button class="btn btn-success btn-sm" onclick="sincronizarCronogramaSheet()"><i class="ti ti-refresh"></i> Sync</button>
+          </div>
+          <p style="font-size:11px;color:#94a3b8;margin-bottom:.6rem">El Sheet debe estar publicado como CSV · <strong>Archivo → Compartir → Publicar en la web</strong></p>
+          <hr class="divider">
+          <div class="upload-area">
+            <input type="file" accept=".xlsx,.xls" onchange="subirArchivo('cronograma', this.files[0])">
+            <div class="ua-icon"><i class="ti ti-calendar-stats"></i></div>
+            <strong>O arrastra el programa aquí</strong>
+            <p>Formato .xlsx</p>
+          </div>
+          <div id="result-cronograma"></div>
+          <div id="btn-refresh-cronograma" style="display:none;margin-top:.5rem">
+            <button class="btn btn-ghost btn-sm" onclick="refrescarCronogramaSheet()"><i class="ti ti-refresh"></i> Actualizar sheet guardado</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Avance de obra -->
+      <div class="slot">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#dcfce7">📊</div>
+          <div class="slot-info">
+            <h3>Avance de obra</h3>
+            <p id="meta-avance">Sin conectar</p>
+          </div>
+          <div class="slot-status" id="status-avance"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div class="url-row" style="margin-bottom:.6rem">
+            <input type="text" id="gdocs-url" placeholder="URL de Google Sheets...">
+            <button class="btn btn-success btn-sm" onclick="sincronizarSheet()"><i class="ti ti-refresh"></i> Sync</button>
+          </div>
+          <p style="font-size:11px;color:#94a3b8;margin-bottom:.6rem">El Sheet debe estar publicado como CSV · <strong>Archivo → Compartir → Publicar en la web</strong></p>
+          <hr class="divider">
+          <div class="upload-area">
+            <input type="file" accept=".xlsx,.xls,.csv" onchange="subirArchivo('avanceDiario', this.files[0])">
+            <div class="ua-icon"><i class="ti ti-upload"></i></div>
+            <strong>O arrastra el archivo de avance</strong>
+            <p>.xlsx o .csv</p>
+          </div>
+          <div id="result-avance"></div>
+          <div id="btn-refresh-sheet" style="display:none;margin-top:.5rem">
+            <button class="btn btn-ghost btn-sm" onclick="refrescarSheet()"><i class="ti ti-refresh"></i> Actualizar sheet guardado</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estimaciones -->
+      <div class="slot" style="grid-column:1/-1">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#e0f2fe">🧾</div>
+          <div class="slot-info">
+            <h3>Estimaciones al cliente</h3>
+            <p id="meta-estimaciones">Sin registrar</p>
+          </div>
+          <div class="slot-status" id="status-estimaciones"><span class="badge-empty">Vacío</span></div>
+        </div>
+        <div class="slot-body">
+          <div id="tabla-estimaciones-wrap" style="margin-bottom:1rem;display:none">
+            <table class="est-table" id="tabla-estimaciones">
+              <thead><tr><th>#</th><th>Período</th><th class="num">Esta est.</th><th class="num">Acumulado</th><th class="num">Retención</th><th class="num">Neto a pagar</th><th>M² esta</th><th>M² acum</th><th></th></tr></thead>
+              <tbody id="tbody-estimaciones"></tbody>
+            </table>
+          </div>
+          <div id="form-estimacion" style="display:none;background:#f8fafc;border-radius:10px;padding:1rem;border:1px solid #e2e8f0;margin-bottom:.75rem">
+            <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:.75rem">➕ Nueva estimación</div>
+            <div class="field-grid">
+              <div class="field"><label># Estimación</label><input type="number" id="est-num" min="1" placeholder="4"></div>
+              <div class="field"><label>Fecha inicio período</label><input type="date" id="est-desde"></div>
+              <div class="field"><label>Fecha fin período</label><input type="date" id="est-hasta"></div>
+              <div class="field"><label>Monto esta estimación $</label><input type="number" id="est-monto" placeholder="0.00" oninput="calcRetencion()"></div>
+              <div class="field"><label>Retención (5%)</label><input type="number" id="est-retencion" placeholder="0.00" readonly style="background:#f1f5f9"></div>
+              <div class="field"><label>Neto a pagar $</label><input type="number" id="est-neto" placeholder="0.00"></div>
+              <div class="field"><label>M² esta estimación</label><input type="number" id="est-m2esta" placeholder="0.00"></div>
+              <div class="field"><label>M² acumulados</label><input type="number" id="est-m2acum" placeholder="0.00"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:.5rem">
+              <button class="btn btn-primary btn-sm" onclick="guardarEstimacion()"><i class="ti ti-check"></i> Guardar</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('form-estimacion').style.display='none'">Cancelar</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('form-estimacion').style.display='block'"><i class="ti ti-plus"></i> Nueva estimación manual</button>
+            <div class="upload-area" style="flex:1;min-width:200px;padding:.75rem">
+              <input type="file" accept=".xlsx,.xls" onchange="subirArchivo('estimacion', this.files[0])">
+              <strong style="font-size:12px">📂 O sube el archivo de estimación (.xlsx)</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cambios de alcance -->
+      <div class="slot" style="grid-column:1/-1">
+        <div class="slot-header">
+          <div class="slot-icon" style="background:#fce7f3">🔄</div>
+          <div class="slot-info">
+            <h3>Cambios de alcance</h3>
+            <p id="meta-cambios">Sin registrar</p>
+          </div>
+          <div class="slot-status" id="status-cambios"><span class="badge-empty">Sin cambios</span></div>
+        </div>
+        <div class="slot-body">
+          <div id="tabla-cambios-wrap" style="display:none;margin-bottom:.75rem">
+            <table class="est-table" id="tabla-cambios">
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th class="num">Monto</th><th></th></tr></thead>
+              <tbody id="tbody-cambios"></tbody>
+            </table>
+          </div>
+          <div id="form-cambio" style="display:none;background:#f8fafc;border-radius:10px;padding:1rem;border:1px solid #e2e8f0;margin-bottom:.75rem">
+            <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:.75rem">➕ Registrar cambio</div>
+            <div class="field-grid">
+              <div class="field"><label>Fecha</label><input type="date" id="cambio-fecha"></div>
+              <div class="field">
+                <label>Tipo</label>
+                <select id="cambio-tipo">
+                  <option value="aditiva">Aditiva (aumenta contrato)</option>
+                  <option value="deductiva">Deductiva (reduce contrato)</option>
+                  <option value="cambio">Cambio de alcance</option>
+                </select>
+              </div>
+              <div class="field" style="grid-column:1/-1"><label>Descripción</label><input type="text" id="cambio-desc" placeholder="Descripción del cambio"></div>
+              <div class="field"><label>Monto $</label><input type="number" id="cambio-monto" placeholder="0.00"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:.5rem">
+              <button class="btn btn-primary btn-sm" onclick="guardarCambio()"><i class="ti ti-check"></i> Guardar</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('form-cambio').style.display='none'">Cancelar</button>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('form-cambio').style.display='block'"><i class="ti ti-plus"></i> Registrar cambio</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Cobertura de esta obra -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-checklist"></i> Cobertura del dashboard</div>
+      <div class="cobertura-grid" id="cobertura-obra">
+        <div class="cob-item empty"><i class="ti ti-circle"></i> Cargando...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECCIÓN 3 — REGISTRAR NUEVA OBRA
+  ══════════════════════════════════════════════════════ -->
+  <div class="seccion" id="sec-nueva">
+
+    <!-- Wizard steps -->
+    <div class="wizard-steps">
+      <div class="wstep active" id="ws-1">
+        <div class="wstep-num">1</div>
+        <div class="wstep-label">Identificar obra</div>
+      </div>
+      <div class="wstep" id="ws-2">
+        <div class="wstep-num">2</div>
+        <div class="wstep-label">Subir archivos</div>
+      </div>
+      <div class="wstep" id="ws-3">
+        <div class="wstep-num">3</div>
+        <div class="wstep-label">Revisar y VoBo</div>
+      </div>
+      <div class="wstep" id="ws-4">
+        <div class="wstep-num">4</div>
+        <div class="wstep-label">Registrado</div>
+      </div>
+    </div>
+
+    <!-- Paso 1: Subir archivos -->
+    <div class="wizard-panel active" id="wp-1">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-paperclip"></i> Paso 1 — Subir archivos</div>
+        <div class="info-box">
+          <i class="ti ti-info-circle" style="font-size:1rem;flex-shrink:0"></i>
+          <span>Sube el <strong>Contrato PDF</strong> primero — el sistema extraerá automáticamente todos los datos del proyecto. Los demás archivos son opcionales en este paso.</span>
+        </div>
+        <div class="slots" style="margin-top:1rem">
+
+          <!-- Contrato PDF — destacado -->
+          <div class="slot slot-required" id="slot-req-contrato" style="grid-column:1/-1">
+            <div class="slot-header" style="background:#eff6ff">
+              <div class="slot-icon" style="background:#dbeafe">📄</div>
+              <div class="slot-info">
+                <h3>Contrato <span style="color:#1B6BB0;font-size:11px;font-weight:600">— RECOMENDADO PRIMERO</span></h3>
+                <p id="nueva-meta-contrato">Sin cargar · El sistema extraerá cliente, fechas, monto y más</p>
+              </div>
+              <div id="nueva-status-contrato"><span class="badge-new">Principal</span> <span class="req-label req-pendiente" id="req-contrato-label">⚠ Requerido</span></div>
+            </div>
+            <div class="slot-body">
+              <div class="upload-area" id="drop-nueva-contrato">
+                <input type="file" accept=".pdf,.doc,.docx" onchange="nuevaObraArchivo('contrato', this.files[0])">
+                <div class="ua-icon"><i class="ti ti-file-text"></i></div>
+                <strong>Arrastra el contrato aquí</strong>
+                <p>Formato .pdf, .doc o .docx · Se extraen automáticamente: cliente, fechas, monto, tipo de contrato, retención, anticipo</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cotización -->
+          <div class="slot">
+            <div class="slot-header">
+              <div class="slot-icon" style="background:#fef9c3">💰</div>
+              <div class="slot-info"><h3>Cotización / Precios unitarios</h3><p id="nueva-meta-cotizacion">Sin cargar</p></div>
+              <div id="nueva-status-cotizacion"><span class="badge-empty">Opcional</span></div>
+            </div>
+            <div class="slot-body">
+              <div class="upload-area">
+                <input type="file" accept=".xlsx,.xls" multiple onchange="nuevaObraArchivoMultiple('cotizacion', this.files)">
+                <div class="ua-icon"><i class="ti ti-calculator"></i></div>
+                <strong>Arrastra la cotización</strong><p>.xlsx · Puedes subir varios archivos</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Programa de obra -->
+          <div class="slot">
+            <div class="slot-header">
+              <div class="slot-icon" style="background:#fef9c3">📅</div>
+              <div class="slot-info"><h3>Programa de obra</h3><p id="nueva-meta-cronograma">Sin cargar</p></div>
+              <div id="nueva-status-cronograma"><span class="badge-empty">Opcional</span></div>
+            </div>
+            <div class="slot-body">
+              <div class="url-row" style="margin-bottom:.6rem">
+                <input type="text" id="nueva-cronograma-url" placeholder="URL de Google Sheets...">
+                <button class="btn btn-success btn-sm" onclick="nuevaObraSheetCronograma()"><i class="ti ti-refresh"></i> Sync</button>
+              </div>
+              <p style="font-size:11px;color:#94a3b8;margin-bottom:.6rem">El Sheet debe estar publicado como CSV · <strong>Archivo → Compartir → Publicar en la web</strong></p>
+              <hr class="divider">
+              <div class="upload-area">
+                <input type="file" accept=".xlsx,.xls" onchange="nuevaObraArchivo('cronograma', this.files[0])">
+                <div class="ua-icon"><i class="ti ti-calendar-stats"></i></div>
+                <strong>O arrastra el programa aquí</strong><p>.xlsx</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:.5rem">
+          <button class="btn btn-primary" onclick="wizardPaso2()"><i class="ti ti-arrow-right"></i> Continuar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 2: Identificar obra (auto-llenado del contrato) -->
+    <div class="wizard-panel" id="wp-2">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-building"></i> Paso 2 — Identificar la obra</div>
+        <div class="info-box" id="vobo-extraccion-msg" style="display:none">
+          <i class="ti ti-check" style="font-size:1rem;flex-shrink:0;color:#059669"></i>
+          <span id="vobo-extraccion-txt">Datos extraídos del contrato. Revisa y completa lo necesario.</span>
+        </div>
+        <div class="field-grid">
+          <div class="field field-required" id="field-req-cc">
+            <label>Centro de Costos (CC) * <span class="req-label req-pendiente" id="req-cc-label">⚠ Requerido</span></label>
+            <input type="number" id="nueva-cc" placeholder="Ej: 521" min="500" max="599" oninput="validarCC(); actualizarRequeridos()">
+            <div id="cc-feedback" style="font-size:11px;margin-top:4px"></div>
+          </div>
+          <div class="field field-required" id="field-req-nombre">
+            <label>Nombre del proyecto * <span class="req-label req-pendiente" id="req-nombre-label">⚠ Requerido</span></label>
+            <input type="text" id="nueva-nombre" placeholder="Ej: Torre Zendera" oninput="validarNombre()">
+          </div>
+          <div class="field">
+            <label>Cliente <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="text" id="nueva-cliente" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>RFC Cliente <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="text" id="nueva-rfc" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>Fecha inicio <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="date" id="nueva-inicio">
+          </div>
+          <div class="field">
+            <label>Fecha fin <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="date" id="nueva-fin">
+          </div>
+          <div class="field">
+            <label>Monto contrato $ <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="number" id="nueva-monto" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>Tipo de contrato <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="text" id="nueva-tipo-contrato" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>Anticipo % <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="number" id="nueva-anticipo" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>Retención % <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="number" id="nueva-retencion" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>Plazo ejecución (días) <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="number" id="nueva-plazo" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>Ubicación de la obra</label>
+            <input type="text" id="nueva-ubicacion" placeholder="Ciudad, Estado">
+          </div>
+          <div class="field">
+            <label>Banco <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="text" id="nueva-banco" placeholder="Se extrae del contrato">
+          </div>
+          <div class="field">
+            <label>CLABE <span style="color:#1B6BB0;font-size:10px">AUTO</span></label>
+            <input type="text" id="nueva-clabe" placeholder="Se extrae del contrato">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:.5rem">
+          <button class="btn btn-ghost" onclick="wizardIr(1)"><i class="ti ti-arrow-left"></i> Atrás</button>
+          <button class="btn btn-primary" onclick="wizardPaso3()"><i class="ti ti-clipboard-check"></i> Revisar y VoBo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 3: VoBo -->
+    <div class="wizard-panel" id="wp-3">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-clipboard-check"></i> Paso 3 — Revisar y autorizar</div>
+        <div class="vobo-box" id="vobo-resumen">
+          <h3><i class="ti ti-check"></i> Resumen de la nueva obra</h3>
+          <div id="vobo-contenido">Analizando archivos...</div>
+        </div>
+        <div id="vobo-alertas"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:1rem">
+          <button class="btn btn-ghost" onclick="wizardIr(2)"><i class="ti ti-arrow-left"></i> Atrás</button>
+          <button class="btn btn-success btn-lg" onclick="registrarNuevaObra()"><i class="ti ti-check"></i> Autorizar y registrar obra</button>
+        </div>
+      </div>
+    </div>
+
+        <!-- Paso 4: Confirmación -->
+    <div class="wizard-panel" id="wp-4">
+      <div class="card" style="text-align:center;padding:2.5rem">
+        <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+        <div style="font-size:18px;font-weight:700;color:#166534;margin-bottom:.5rem" id="confirm-titulo">Obra registrada</div>
+        <div style="font-size:14px;color:#64748b;margin-bottom:1.5rem" id="confirm-sub">La obra fue registrada correctamente en el sistema.</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a id="confirm-link-dash" href="#" class="btn btn-primary"><i class="ti ti-chart-bar"></i> Ver dashboard</a>
+          <button class="btn btn-ghost" onclick="wizardReset()"><i class="ti ti-plus"></i> Registrar otra obra</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECCIÓN 4 — ARCHIVOS
+  ══════════════════════════════════════════════════════ -->
+  <div class="seccion" id="sec-archivos">
+
+    <div class="info-box">
+      <i class="ti ti-info-circle" style="font-size:1.1rem;flex-shrink:0;margin-top:1px"></i>
+      <span>Historial completo de archivos cargados por proyecto. Si se reemplaza un archivo, se guarda el registro del cambio.</span>
+    </div>
+
+    <!-- Resumen global -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-table"></i> Resumen global de archivos</div>
+      <table class="arch-table" id="tabla-archivos-global">
+        <thead>
+          <tr>
+            <th>Proyecto</th>
+            <th title="Sección: Catálogo/Libros">Catálogo</th>
+            <th title="Sección: Catálogo/Libros">ContPAQ</th>
+            <th title="Sección: Por obra">Contrato</th>
+            <th title="Sección: Por obra">Cotización</th>
+            <th title="Sección: Por obra">Cronograma</th>
+            <th title="Sección: Por obra">Avance</th>
+            <th title="Sección: Por obra">Estimaciones</th>
+            <th>Cobertura</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-archivos-global">
+          <tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:1.5rem">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Detalle por proyecto -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span><i class="ti ti-folder"></i> Detalle por proyecto</span>
+        <select id="arch-cc-selector" onchange="renderDetalleArchivos()" style="padding:5px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;outline:none">
+          <option value="">— Selecciona obra —</option>
+        </select>
+      </div>
+      <div id="detalle-archivos">
+        <div style="color:#94a3b8;font-size:13px;text-align:center;padding:1.5rem">Selecciona un proyecto para ver el detalle</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ── Estado global ──────────────────────────────────────────────────────────
+let CC_ACTUAL = null;
+let OBRAS_LIST = [];
+let nuevaObraData = { cc: null, nombre: null, archivos: {} };
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const ccParam = params.get('cc');
+  cargarListaObras(ccParam);
+  renderCoberturaGlobal();
+  verificarCatalogo();
+});
+
+async function verificarCatalogo() {
+  try {
+    const res = await fetch('/api/catalogo');
+    const data = await res.json();
+    const total = Object.keys(data).length;
+    if (total > 0) {
+      document.getElementById('status-catalogo').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+      document.getElementById('meta-catalogo').textContent = `${total} cuentas registradas`;
+    }
+  } catch(e) {}
+}
+
+// ── Cargar lista de obras ──────────────────────────────────────────────────
+async function cargarListaObras(ccInicial) {
+  try {
+    const res = await fetch('/api/proyectos');
+    const obras = await res.json();
+    OBRAS_LIST = obras; window.OBRAS_LIST = obras;
+    const sel = document.getElementById('ccSelector');
+    if (!sel) return;
+    sel.innerHTML = '';
+    obras.sort((a,b) => (a.cc||'').localeCompare(b.cc||'')).forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.cc;
+      opt.textContent = `${o.nombre || 'Obra'} · CC ${o.cc}`;
+      if (o.cc === ccInicial) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const ccSeleccionado = ccInicial || (obras[0]?.cc);
+    if (ccSeleccionado) { CC_ACTUAL = ccSeleccionado; actualizarObraBar(); cargarArchivosMeta(); }
+  } catch(e) { console.error('Error cargando obras:', e); }
+}
+
+// ── Cambiar obra activa ────────────────────────────────────────────────────
+function cambiarObra() {
+  const sel = document.getElementById('ccSelector');
+  CC_ACTUAL = sel.value;
+  history.replaceState(null,'', '?cc=' + CC_ACTUAL);
+  actualizarObraBar();
+  cargarArchivosMeta();
+}
+
+function actualizarObraBar() {
+  const obra = OBRAS_LIST.find(o => o.cc === CC_ACTUAL);
+  const el = document.getElementById('obraNombre');
+  if (el) el.textContent = obra ? `${obra.nombre} · CC ${CC_ACTUAL}` : `CC ${CC_ACTUAL}`;
+}
+
+// ── Cargar metadata de archivos ────────────────────────────────────────────
+async function cargarArchivosMeta() {
+  if (!CC_ACTUAL) return;
+  try {
+    const res = await fetch(`/api/archivos/${CC_ACTUAL}`);
+    const arch = await res.json();
+    renderSlotStatus('contpaq', arch.contpaq);
+    renderSlotStatus('contrato', arch.contrato);
+    renderSlotStatus('cotizacion', arch.cotizacion || arch.preciosUnitarios);
+    renderSlotStatus('cronograma', arch.planObra);
+    renderSlotStatus('avance', arch.avanceDiario);
+    renderSlotStatus('estimaciones', arch.estimaciones);
+    renderSlotStatus('cambios', arch.cambiosAlcance);
+    renderCobertura(arch);
+
+    // Sheet guardado — avance
+    const proj = OBRAS_LIST.find(o => o.cc === CC_ACTUAL);
+    if (proj?._gdocsUrl) {
+      document.getElementById('btn-refresh-sheet').style.display = 'block';
+      document.getElementById('gdocs-url').value = proj._gdocsUrl;
+    }
+    // Sheet guardado — cronograma
+    if (proj?._cronogramaGdocsUrl) {
+      document.getElementById('btn-refresh-cronograma').style.display = 'block';
+      document.getElementById('cronograma-url').value = proj._cronogramaGdocsUrl;
+    }
+
+    // Estimaciones
+    renderEstimaciones(proj);
+    // Cambios
+    renderCambios(proj);
+  } catch(e) { console.error('Error cargando metadata:', e); }
+}
+
+function renderSlotStatus(tipo, meta) {
+  const statusEl = document.getElementById(`status-${tipo}`);
+  const metaEl = document.getElementById(`meta-${tipo}`);
+  if (!statusEl) return;
+  if (meta?.actual) {
+    statusEl.innerHTML = `<span class="badge-ok">✓ Cargado</span>`;
+    if (metaEl) metaEl.textContent = `${meta.actual.nombre} · ${meta.actual.fechaCarga}`;
+  } else {
+    statusEl.innerHTML = `<span class="badge-empty">Vacío</span>`;
+  }
+}
+
+function renderCobertura(arch) {
+  // Cobertura SOLO de la sección Actualizar por obra
+  const items = [
+    { label: 'Contrato',        data: arch.contrato },
+    { label: 'Cotización',      data: arch.cotizacion || arch.preciosUnitarios },
+    { label: 'Cronograma',      data: arch.planObra },
+    { label: 'Avance diario',   data: arch.avanceDiario },
+    { label: 'Estimaciones',    data: arch.estimaciones },
+    { label: 'Cambios',         data: arch.cambiosAlcance },
+  ];
+  const el = document.getElementById('cobertura-obra');
+  if (!el) return;
+  el.innerHTML = items.map(i => `
+    <div class="cob-item ${i.data ? 'ok' : 'empty'}">
+      <i class="ti ti-${i.data ? 'circle-check-filled' : 'circle'}"></i>
+      ${i.label}
+    </div>
+  `).join('');
+}
+
+async function renderCoberturaGlobal() {
+  try {
+    const res = await fetch('/api/proyectos');
+    const obras = await res.json();
+    const el = document.getElementById('cobertura-global');
+    if (!el) return;
+    // Cobertura SOLO de la sección Catálogo/Libros: Catálogo de cuentas + ContPAQ
+    const catalogoOk = await fetch('/api/catalogo').then(r=>r.json()).then(d=>Object.keys(d).length>0).catch(()=>false);
+    el.innerHTML = obras.sort((a,b)=>(a.cc||'').localeCompare(b.cc||'')).map(o => {
+      const contpaqOk = o.totalEgresado > 0;
+      const pct = Math.round(([catalogoOk, contpaqOk].filter(Boolean).length / 2) * 100);
+      const color = pct === 100 ? '#166534' : pct >= 50 ? '#854d0e' : '#94a3b8';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;margin-bottom:.4rem">
+        <strong style="color:#1e293b">${o.nombre || 'Obra'} <span style="color:#94a3b8;font-weight:400">CC ${o.cc}</span></strong>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:11px;color:${catalogoOk?'#059669':'#94a3b8'}">${catalogoOk?'✓':'—'} Catálogo</span>
+          <span style="font-size:11px;color:${contpaqOk?'#059669':'#94a3b8'}">${contpaqOk?'✓':'—'} ContPAQ</span>
+          <span style="font-weight:700;color:${color}">${pct}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// ── Subir Catálogo de cuentas ──────────────────────────────────────────────
+async function subirCatalogo(file) {
+  if (!file) return;
+  mostrarLoading('Procesando catálogo de cuentas...');
+  const fd = new FormData();
+  fd.append('archivo', file);
+  try {
+    const res = await fetch('/api/upload/catalogo', { method: 'POST', body: fd });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok) {
+      document.getElementById('status-catalogo').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+      document.getElementById('meta-catalogo').textContent = `${data.cuentasNuevas || 0} cuentas nuevas · ${new Date().toLocaleDateString('es-MX')}`;
+      document.getElementById('result-catalogo').innerHTML = `<div class="vobo-box" style="margin-top:.75rem"><h3>✅ Catálogo actualizado</h3><div class="vobo-row"><span class="vobo-label">Cuentas nuevas agregadas</span><span class="vobo-value">${data.cuentasNuevas || 0}</span></div><div class="vobo-row"><span class="vobo-label">Cuentas de referencia</span><span class="vobo-value">${data.cuentasExistentes || 0}</span></div></div>`;
+      toast('Catálogo actualizado correctamente', 'ok');
+      renderCoberturaGlobal();
+    } else {
+      toast(data.error || 'Error al procesar catálogo', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+// ── Subir ContPAQ ──────────────────────────────────────────────────────────
+async function subirContpaq(file) {
+  if (!file) return;
+  mostrarLoading('Procesando libro auxiliar ContPAQ...');
+  const fd = new FormData();
+  fd.append('archivo', file);
+  try {
+    const res = await fetch('/api/upload/contpaq', { method: 'POST', body: fd });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok) {
+      document.getElementById('status-contpaq').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+      const total = data.obras?.reduce((s,o) => s + o.totalEgresado, 0) || 0;
+      document.getElementById('meta-contpaq').textContent = `${data.obras?.length || 0} obras · $${Math.round(total/1000)}K total · ${new Date().toLocaleDateString('es-MX')}`;
+      document.getElementById('result-contpaq').innerHTML = `<div class="vobo-box" style="margin-top:.75rem"><h3>✅ ${data.mensaje}</h3>${(data.obras||[]).map(o=>`<div class="vobo-row"><span class="vobo-label">${o.nombre} CC ${o.cc}</span><span class="vobo-value">$${Math.round(o.totalEgresado).toLocaleString('es-MX')}</span></div>`).join('')}</div>`;
+      toast(data.mensaje, 'ok');
+      renderCoberturaGlobal();
+      // Recargar obras
+      await cargarListaObras(CC_ACTUAL);
+    } else {
+      toast(data.error || 'Error al procesar ContPAQ', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+// ── Subir archivo por obra ─────────────────────────────────────────────────
+async function subirArchivo(tipo, file) {
+  if (!file || !CC_ACTUAL) { toast('Selecciona una obra primero', 'err'); return; }
+  mostrarLoading('Procesando ' + tipo + '...');
+  const fd = new FormData();
+  fd.append('archivo', file);
+  fd.append('cc', CC_ACTUAL);
+
+  const endpoints = {
+    cronograma: `/api/upload/cronograma/${CC_ACTUAL}`,
+    estimacion: '/api/upload/estimacion',
+    cotizacion: `/api/upload/auto/${CC_ACTUAL}`,
+    contrato:   `/api/upload/contrato/${CC_ACTUAL}`,
+    avanceDiario: `/api/upload/auto/${CC_ACTUAL}`,
+  };
+
+  const url = endpoints[tipo] || `/api/upload/auto/${CC_ACTUAL}`;
+  if (tipo === 'cotizacion' || tipo === 'avanceDiario') {
+    fd.append('tipo', tipo);
+    fd.append('confirmar', '1');
+  }
+
+  try {
+    const res = await fetch(url, { method: 'POST', body: fd });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok || data.mensaje) {
+      const statusEl = document.getElementById(`status-${tipo}`);
+      const metaEl = document.getElementById(`meta-${tipo}`);
+      if (statusEl) statusEl.innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+      if (metaEl) metaEl.textContent = file.name + ' · ' + new Date().toLocaleDateString('es-MX');
+      const resultEl = document.getElementById(`result-${tipo}`);
+      if (resultEl && data.mensaje) resultEl.innerHTML = `<div style="margin-top:.5rem;font-size:12px;color:#166534;font-weight:600">✅ ${data.mensaje}</div>`;
+      toast(data.mensaje || 'Archivo cargado correctamente', 'ok');
+      cargarArchivosMeta();
+    } else {
+      toast(data.error || 'Error al procesar archivo', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+// ── Estimaciones ───────────────────────────────────────────────────────────
+function renderEstimaciones(proj) {
+  if (!proj?.estimaciones?.length) return;
+  const tbody = document.getElementById('tbody-estimaciones');
+  const wrap = document.getElementById('tabla-estimaciones-wrap');
+  if (!tbody || !wrap) return;
+  wrap.style.display = 'block';
+  const fmt = n => '$' + Math.round(n||0).toLocaleString('es-MX');
+  tbody.innerHTML = proj.estimaciones.map((e,i) => `
+    <tr>
+      <td><strong>Est. ${e.numero||i+1}</strong></td>
+      <td>${e.periodoDesde||''}${e.periodoHasta?' – '+e.periodoHasta:''}</td>
+      <td class="num">${fmt(e.estaEstimacion||e.montoEstimacion)}</td>
+      <td class="num">${fmt(e.acumActual)}</td>
+      <td class="num" style="color:#dc2626">${fmt(e.retencion)}</td>
+      <td class="num" style="color:#059669">${fmt(e.netoPagar||e.importePagar)}</td>
+      <td>${Math.round(e.m2Esta||0)} m²</td>
+      <td>${Math.round(e.m2Acum||0)} m²</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarEstimacion(${e.numero||i+1})">×</button></td>
+    </tr>
+  `).join('');
+  const statusEl = document.getElementById('status-estimaciones');
+  const metaEl = document.getElementById('meta-estimaciones');
+  if (statusEl) statusEl.innerHTML = `<span class="badge-ok">✓ ${proj.estimaciones.length} est.</span>`;
+  if (metaEl) metaEl.textContent = `Últ: Est. ${proj.estimaciones[proj.estimaciones.length-1]?.numero}`;
+}
+
+function calcRetencion() {
+  const monto = parseFloat(document.getElementById('est-monto').value) || 0;
+  document.getElementById('est-retencion').value = (monto * 0.05).toFixed(2);
+  document.getElementById('est-neto').value = (monto * 0.95).toFixed(2);
+}
+
+async function guardarEstimacion() {
+  if (!CC_ACTUAL) { toast('Selecciona una obra', 'err'); return; }
+  const est = {
+    cc: CC_ACTUAL,
+    numero: parseInt(document.getElementById('est-num').value),
+    periodoDesde: document.getElementById('est-desde').value,
+    periodoHasta: document.getElementById('est-hasta').value,
+    estaEstimacion: parseFloat(document.getElementById('est-monto').value)||0,
+    retencion: parseFloat(document.getElementById('est-retencion').value)||0,
+    netoPagar: parseFloat(document.getElementById('est-neto').value)||0,
+    m2Esta: parseFloat(document.getElementById('est-m2esta').value)||0,
+    m2Acum: parseFloat(document.getElementById('est-m2acum').value)||0,
+  };
+  if (!est.numero) { toast('Ingresa el número de estimación', 'err'); return; }
+  mostrarLoading('Guardando estimación...');
+  try {
+    const res = await fetch('/api/upload/estimacion', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(est)
+    });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok || data.mensaje) {
+      toast(data.mensaje || 'Estimación guardada', 'ok');
+      document.getElementById('form-estimacion').style.display = 'none';
+      await cargarListaObras(CC_ACTUAL);
+      cargarArchivosMeta();
+    } else {
+      toast(data.error || 'Error al guardar', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+async function eliminarEstimacion(num) {
+  if (!confirm(`¿Eliminar estimación ${num}?`)) return;
+  mostrarLoading('Eliminando...');
+  try {
+    const res = await fetch(`/api/proyectos/${CC_ACTUAL}/estimacion/${num}`, { method: 'DELETE' });
+    ocultarLoading();
+    await cargarListaObras(CC_ACTUAL);
+    cargarArchivosMeta();
+    toast('Estimación eliminada', 'ok');
+  } catch(e) { ocultarLoading(); toast('Error', 'err'); }
+}
+
+// ── Cambios de alcance ─────────────────────────────────────────────────────
+function renderCambios(proj) {
+  if (!proj?.cambiosAlcance?.length) return;
+  const tbody = document.getElementById('tbody-cambios');
+  const wrap = document.getElementById('tabla-cambios-wrap');
+  if (!tbody || !wrap) return;
+  wrap.style.display = 'block';
+  tbody.innerHTML = proj.cambiosAlcance.map((c,i) => `
+    <tr>
+      <td>${c.fecha||''}</td>
+      <td><span class="badge-${c.tipo==='aditiva'?'ok':'warn'}">${c.tipo||''}</span></td>
+      <td>${c.descripcion||c.desc||''}</td>
+      <td class="num" style="color:${c.tipo==='aditiva'?'#059669':'#dc2626'}">$${Math.round(c.monto||0).toLocaleString('es-MX')}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="eliminarCambio(${i})">×</button></td>
+    </tr>
+  `).join('');
+  const statusEl = document.getElementById('status-cambios');
+  if (statusEl) statusEl.innerHTML = `<span class="badge-warn">${proj.cambiosAlcance.length} cambio(s)</span>`;
+}
+
+async function guardarCambio() {
+  if (!CC_ACTUAL) { toast('Selecciona una obra', 'err'); return; }
+  const cambio = {
+    fecha: document.getElementById('cambio-fecha').value,
+    tipo: document.getElementById('cambio-tipo').value,
+    descripcion: document.getElementById('cambio-desc').value,
+    monto: parseFloat(document.getElementById('cambio-monto').value)||0,
+  };
+  if (!cambio.descripcion) { toast('Ingresa una descripción', 'err'); return; }
+  mostrarLoading('Guardando cambio...');
+  try {
+    const proj = OBRAS_LIST.find(o => o.cc === CC_ACTUAL) || {};
+    const cambios = [...(proj.cambiosAlcance||[]), cambio];
+    const res = await fetch(`/api/proyectos/${CC_ACTUAL}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ cambiosAlcance: cambios })
+    });
+    ocultarLoading();
+    document.getElementById('form-cambio').style.display = 'none';
+    toast('Cambio registrado', 'ok');
+    await cargarListaObras(CC_ACTUAL);
+    cargarArchivosMeta();
+  } catch(e) { ocultarLoading(); toast('Error', 'err'); }
+}
+
+async function eliminarCambio(idx) {
+  if (!confirm('¿Eliminar este cambio?')) return;
+  const proj = OBRAS_LIST.find(o => o.cc === CC_ACTUAL) || {};
+  const cambios = (proj.cambiosAlcance||[]).filter((_,i) => i !== idx);
+  await fetch(`/api/proyectos/${CC_ACTUAL}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ cambiosAlcance: cambios })
+  });
+  toast('Cambio eliminado', 'ok');
+  await cargarListaObras(CC_ACTUAL);
+  cargarArchivosMeta();
+}
+
+// ── Google Sheets — Cronograma ─────────────────────────────────────────────
+async function sincronizarCronogramaSheet() {
+  const url = document.getElementById('cronograma-url').value.trim();
+  if (!url) { toast('Ingresa la URL del Sheet', 'err'); return; }
+  if (!CC_ACTUAL) { toast('Selecciona una obra', 'err'); return; }
+  mostrarLoading('Sincronizando cronograma desde Google Sheets...');
+  try {
+    const res = await fetch(`/api/upload/cronograma-gdocs/${CC_ACTUAL}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url, confirmar: true })
+    });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok) {
+      toast(data.mensaje || 'Cronograma sincronizado', 'ok');
+      document.getElementById('btn-refresh-cronograma').style.display = 'block';
+      cargarArchivosMeta();
+    } else {
+      toast(data.error || 'Error al sincronizar', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+async function refrescarCronogramaSheet() {
+  if (!CC_ACTUAL) return;
+  mostrarLoading('Actualizando cronograma...');
+  try {
+    const res = await fetch(`/api/upload/cronograma-gdocs/${CC_ACTUAL}/refresh`, { method: 'POST' });
+    const data = await res.json();
+    ocultarLoading();
+    toast(data.ok ? (data.mensaje||'Cronograma actualizado') : (data.error||'Error'), data.ok?'ok':'err');
+    if (data.ok) cargarArchivosMeta();
+  } catch(e) { ocultarLoading(); toast('Error', 'err'); }
+}
+
+// ── Google Sheets — Avance ─────────────────────────────────────────────────
+async function sincronizarSheet() {
+  const url = document.getElementById('gdocs-url').value.trim();
+  if (!url) { toast('Ingresa la URL del Sheet', 'err'); return; }
+  if (!CC_ACTUAL) { toast('Selecciona una obra', 'err'); return; }
+  mostrarLoading('Sincronizando Google Sheets...');
+  try {
+    const res = await fetch(`/api/upload/gdocs/${CC_ACTUAL}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url, confirmar: true })
+    });
+    const data = await res.json();
+    ocultarLoading();
+    if (data.ok) {
+      toast(data.mensaje || 'Avance sincronizado', 'ok');
+      document.getElementById('btn-refresh-sheet').style.display = 'block';
+      cargarArchivosMeta();
+    } else {
+      toast(data.error || 'Error al sincronizar', 'err');
+    }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+}
+
+async function refrescarSheet() {
+  if (!CC_ACTUAL) return;
+  mostrarLoading('Actualizando avance...');
+  try {
+    const res = await fetch(`/api/upload/gdocs/${CC_ACTUAL}/refresh`, { method: 'POST' });
+    const data = await res.json();
+    ocultarLoading();
+    toast(data.ok ? (data.mensaje||'Avance actualizado') : (data.error||'Error'), data.ok?'ok':'err');
+    if (data.ok) cargarArchivosMeta();
+  } catch(e) { ocultarLoading(); toast('Error', 'err'); }
+}
+
+// ── Wizard nueva obra ──────────────────────────────────────────────────────
+function setModo(modo) {
+  ['general','obra','nueva','archivos'].forEach(m => {
+    document.getElementById(`sec-${m}`).classList.toggle('active', m===modo);
+    document.getElementById(`tab-${m}`).classList.toggle('active', m===modo);
+  });
+  if (modo === 'obra' && !CC_ACTUAL && OBRAS_LIST.length) {
+    CC_ACTUAL = OBRAS_LIST[0].cc;
+    actualizarObraBar();
+    cargarArchivosMeta();
+  }
+  if (modo === 'archivos') {
+    renderTablaArchivosGlobal();
+    poblarSelectorArchivos();
+  }
+}
+
+function validarCC() {
+  const val = document.getElementById('nueva-cc').value;
+  const fb = document.getElementById('cc-feedback');
+  if (!val) { fb.textContent = ''; return; }
+  const existe = OBRAS_LIST.find(o => o.cc === val);
+  if (existe) {
+    fb.textContent = `⚠ CC ${val} ya existe: ${existe.nombre}`;
+    fb.style.color = '#854d0e';
+  } else {
+    fb.textContent = `✓ CC ${val} disponible`;
+    fb.style.color = '#166534';
+  }
+  actualizarRequeridos();
+}
+
+function validarNombre() {
+  const val = (document.getElementById('nueva-nombre')?.value || '').trim();
+  const field = document.getElementById('field-req-nombre');
+  const lbl = document.getElementById('req-nombre-label');
+  if (!field || !lbl) return;
+  if (!val) {
+    field.classList.remove('completado');
+    lbl.textContent = '⚠ Requerido'; lbl.className = 'req-label req-pendiente';
+    return;
+  }
+  const existe = window.OBRAS_LIST?.find(o => (o.nombre||'').toLowerCase() === val.toLowerCase());
+  if (existe) {
+    field.classList.remove('completado');
+    lbl.textContent = `⚠ Ya existe: CC ${existe.cc}`; lbl.className = 'req-label req-pendiente';
+  } else {
+    field.classList.add('completado');
+    lbl.textContent = '✓ Disponible'; lbl.className = 'req-label req-ok';
+  }
+}
+
+function wizardIr(paso) {
+  [1,2,3,4].forEach(p => {
+    document.getElementById(`wp-${p}`).classList.toggle('active', p===paso);
+    const ws = document.getElementById(`ws-${p}`);
+    ws.classList.toggle('active', p===paso);
+    ws.classList.toggle('done', p<paso);
+  });
+}
+
+async function wizardPaso2() {
+  // Paso 1 → Paso 2: procesar contrato si se subió y auto-llenar campos
+  if (Object.keys(nuevaObraData.archivos).length === 0 && !nuevaObraData.cronogramaUrl) {
+    toast('Sube al menos un archivo para continuar', 'err'); return;
+  }
+  wizardIr(2);
+
+  // Si hay contrato, procesarlo ahora para extraer campos
+  const contratoFile = nuevaObraData.archivos['contrato'];
+  if (contratoFile) {
+    mostrarLoading('Analizando contrato PDF...');
+    try {
+      // Necesitamos un CC temporal para subir — usamos "tmp"
+      // Primero creamos un proyecto temporal para recibir el contrato
+      const ccTemp = document.getElementById('nueva-cc').value || 'tmp';
+      const fd = new FormData();
+      fd.append('archivo', contratoFile);
+      const r = await fetch(`/api/upload/contrato/${ccTemp}`, { method: 'POST', body: fd });
+      const d = await r.json();
+      ocultarLoading();
+
+      if (d.ok && d.campos) {
+        const val = k => d.campos[k]?.valor || '';
+        // Auto-llenar campos detectados
+        // Nombre NO se auto-llena — el usuario lo escribe manualmente
+        if (val('razonSocialCliente'))  setField('nueva-cliente',       val('razonSocialCliente'));
+        else if (val('repLegalCliente')) setField('nueva-cliente',      val('repLegalCliente'));
+        if (val('rfcCliente'))          setField('nueva-rfc',           val('rfcCliente'));
+        if (val('fechaInicio'))         setField('nueva-inicio',        val('fechaInicio'));
+        if (val('fechaTerminacion'))    setField('nueva-fin',           val('fechaTerminacion'));
+        if (val('montoContrato'))       setField('nueva-monto',         val('montoContrato'));
+        if (val('tipoContrato'))        setField('nueva-tipo-contrato', val('tipoContrato'));
+        if (val('anticipoPct'))         setField('nueva-anticipo',      val('anticipoPct'));
+        if (val('retencionPct'))        setField('nueva-retencion',     val('retencionPct'));
+        if (val('plazoEjecucionDias'))  setField('nueva-plazo',         val('plazoEjecucionDias'));
+        if (val('banco'))               setField('nueva-banco',         val('banco'));
+        if (val('clabe'))               setField('nueva-clabe',         val('clabe'));
+        if (val('direccionObra'))       setField('nueva-ubicacion',     val('direccionObra'));
+
+        // Guardar campos extraídos para usarlos al registrar
+        nuevaObraData._camposContrato = d.campos;
+        nuevaObraData._archivoPdf = d.archivoPdf;
+
+        // Mostrar mensaje de extracción
+        const msg = document.getElementById('vobo-extraccion-msg');
+        const txt = document.getElementById('vobo-extraccion-txt');
+        if (msg) { msg.style.display = 'flex'; txt.textContent = `✓ ${d.camposDetectados} campos extraídos del contrato. Revisa y completa lo necesario.`; }
+        toast(`${d.camposDetectados} campos extraídos del contrato`, 'ok');
+      }
+    } catch(e) {
+      ocultarLoading();
+      toast('No se pudo procesar el contrato — completa los campos manualmente', 'warn');
+    }
+  }
+}
+
+function setField(id, value) {
+  const el = document.getElementById(id);
+  if (el && value !== null && value !== undefined && value !== '') el.value = value;
+}
+
+function nuevaObraArchivo(tipo, file) {
+  if (!file) return;
+  nuevaObraData.archivos[tipo] = file;
+  document.getElementById(`nueva-meta-${tipo}`).textContent = file.name;
+  document.getElementById(`nueva-status-${tipo}`).innerHTML = '<span class="badge-ok">✓ Listo</span>';
+  // Marcar contrato como completado
+  if (tipo === 'contrato') {
+    const slot = document.getElementById('slot-req-contrato');
+    const lbl = document.getElementById('req-contrato-label');
+    if (slot) slot.classList.add('completado');
+    if (lbl) { lbl.textContent = '✓ Cargado'; lbl.className = 'req-label req-ok'; }
+  }
+}
+
+function nuevaObraArchivoMultiple(tipo, files) {
+  if (!files || files.length === 0) return;
+  if (!nuevaObraData.archivosMultiple) nuevaObraData.archivosMultiple = {};
+  nuevaObraData.archivosMultiple[tipo] = Array.from(files);
+  const names = Array.from(files).map(f => f.name).join(', ');
+  document.getElementById(`nueva-meta-${tipo}`).textContent = `${files.length} archivo(s): ${names}`;
+  document.getElementById(`nueva-status-${tipo}`).innerHTML = '<span class="badge-ok">✓ Listo</span>';
+}
+
+function actualizarRequeridos() {
+  const cc = document.getElementById('nueva-cc')?.value;
+  const fieldCC = document.getElementById('field-req-cc');
+  const lblCC = document.getElementById('req-cc-label');
+  if (fieldCC && lblCC) {
+    const existe = window.OBRAS_LIST?.find(o => o.cc === cc);
+    if (cc && !existe) {
+      fieldCC.classList.add('completado');
+      lblCC.textContent = '✓ Disponible'; lblCC.className = 'req-label req-ok';
+    } else if (cc && existe) {
+      fieldCC.classList.remove('completado');
+      lblCC.textContent = '⚠ CC ya existe'; lblCC.className = 'req-label req-pendiente';
+    } else {
+      fieldCC.classList.remove('completado');
+      lblCC.textContent = '⚠ Requerido'; lblCC.className = 'req-label req-pendiente';
+    }
+  }
+}
+
+function nuevaObraSheetCronograma() {
+  const url = document.getElementById('nueva-cronograma-url').value.trim();
+  if (!url) { toast('Ingresa la URL del Sheet', 'err'); return; }
+  // Guardar URL para usarla al registrar
+  nuevaObraData.cronogramaUrl = url;
+  document.getElementById('nueva-meta-cronograma').textContent = 'Google Sheets enlazado';
+  document.getElementById('nueva-status-cronograma').innerHTML = '<span class="badge-ok">✓ Listo</span>';
+  toast('Google Sheets guardado — se sincronizará al registrar la obra', 'ok');
+}
+
+function wizardPaso3() {
+  const cc = document.getElementById('nueva-cc').value;
+  const nombre = document.getElementById('nueva-nombre').value.trim();
+  if (!cc) { toast('Ingresa el CC del proyecto', 'err'); return; }
+  if (!nombre) { toast('Ingresa el nombre del proyecto', 'err'); return; }
+  if (window.OBRAS_LIST?.find(o => o.cc === cc)) { toast('Este CC ya existe — usa "Actualizar por obra"', 'err'); return; }
+
+  nuevaObraData.cc = cc;
+
+  wizardIr(3);
+
+  const fmt = (v, prefix='') => v ? `${prefix}${v}` : '—';
+  const fmtMoney = v => v ? '$' + parseFloat(v).toLocaleString('es-MX', {minimumFractionDigits:2}) : '—';
+
+  const filas = [
+    ['Centro de Costos', `CC ${cc}`],
+    ['Nombre del proyecto', fmt(nombre)],
+    ['Cliente', fmt(document.getElementById('nueva-cliente').value)],
+    ['RFC Cliente', fmt(document.getElementById('nueva-rfc').value)],
+    ['Fecha inicio', fmt(document.getElementById('nueva-inicio').value)],
+    ['Fecha fin', fmt(document.getElementById('nueva-fin').value)],
+    ['Monto contrato', fmtMoney(document.getElementById('nueva-monto').value)],
+    ['Tipo de contrato', fmt(document.getElementById('nueva-tipo-contrato').value)],
+    ['Anticipo', fmt(document.getElementById('nueva-anticipo').value, '') + (document.getElementById('nueva-anticipo').value ? '%' : '')],
+    ['Retención', fmt(document.getElementById('nueva-retencion').value, '') + (document.getElementById('nueva-retencion').value ? '%' : '')],
+    ['Plazo ejecución', fmt(document.getElementById('nueva-plazo').value, '') + (document.getElementById('nueva-plazo').value ? ' días' : '')],
+    ['Banco', fmt(document.getElementById('nueva-banco').value)],
+    ['CLABE', fmt(document.getElementById('nueva-clabe').value)],
+    ['Archivos', Object.keys(nuevaObraData.archivos).join(', ') + (nuevaObraData.cronogramaUrl ? ' + Google Sheets' : '') || '—'],
+  ];
+
+  document.getElementById('vobo-contenido').innerHTML = filas.map(([k,v]) =>
+    `<div class="vobo-row"><span class="vobo-label">${k}</span><span class="vobo-value">${v}</span></div>`
+  ).join('');
+}
+
+async function registrarNuevaObra() {
+  const cc = nuevaObraData.cc;
+  mostrarLoading('Registrando obra...');
+  const errores = [];
+
+  // Recoger todos los campos del paso 2
+  const nombre        = document.getElementById('nueva-nombre').value;
+  const cliente       = document.getElementById('nueva-cliente').value;
+  const rfcCliente    = document.getElementById('nueva-rfc').value;
+  const inicio        = document.getElementById('nueva-inicio').value;
+  const fin           = document.getElementById('nueva-fin').value;
+  const montoContrato = parseFloat(document.getElementById('nueva-monto').value) || null;
+  const tipoContrato  = document.getElementById('nueva-tipo-contrato').value;
+  const anticipoPct   = parseFloat(document.getElementById('nueva-anticipo').value) || null;
+  const retencionPct  = parseFloat(document.getElementById('nueva-retencion').value) || null;
+  const plazo         = parseInt(document.getElementById('nueva-plazo').value) || null;
+  const ubicacion     = document.getElementById('nueva-ubicacion').value;
+  const banco         = document.getElementById('nueva-banco').value;
+  const clabe         = document.getElementById('nueva-clabe').value;
+
+  try {
+    // 1. Crear el proyecto base con todos los campos
+    const res = await fetch(`/api/proyectos/${cc}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        cc, nombre, cliente, rfcCliente, ubicacion,
+        fechaInicio: inicio, fechaFin: fin,
+        ...(montoContrato  ? { montoContrato }  : {}),
+        ...(tipoContrato   ? { tipoContrato }   : {}),
+        ...(anticipoPct    ? { anticipoPct }    : {}),
+        ...(retencionPct   ? { retencionPct }   : {}),
+        ...(plazo          ? { plazoEjecucionDias: plazo } : {}),
+        ...(banco          ? { banco }          : {}),
+        ...(clabe          ? { clabe }          : {}),
+        ...(nuevaObraData._archivoPdf ? { contrato: { archivoPdf: nuevaObraData._archivoPdf, campos: nuevaObraData._camposContrato } } : {}),
+      })
+    });
+    if (!res.ok) throw new Error('No se pudo crear el proyecto base');
+
+    // 2. Subir cada archivo con feedback individual
+    for (const [tipo, file] of Object.entries(nuevaObraData.archivos)) {
+      mostrarLoading(`Subiendo ${tipo}: ${file.name}...`);
+      try {
+        const fd = new FormData();
+        fd.append('archivo', file);
+        fd.append('confirmar', '1');
+        const endpt = tipo === 'cronograma' ? `/api/upload/cronograma/${cc}` :
+                      tipo === 'contrato'   ? `/api/upload/contrato/${cc}` :
+                      tipo === 'cotizacion' ? `/api/upload/auto/${cc}` :
+                      `/api/upload/auto/${cc}`;
+        const r = await fetch(endpt, { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok && !d.mensaje) errores.push(`${tipo}: ${d.error || 'Error desconocido'}`);
+      } catch(e) { errores.push(`${tipo}: ${e.message}`); }
+    }
+
+    // 3. Sincronizar Google Sheets de cronograma si se proporcionó URL
+    if (nuevaObraData.cronogramaUrl) {
+      mostrarLoading('Sincronizando cronograma desde Google Sheets...');
+      try {
+        const r = await fetch(`/api/upload/cronograma-gdocs/${cc}`, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ url: nuevaObraData.cronogramaUrl, confirmar: true })
+        });
+        const d = await r.json();
+        if (!d.ok) errores.push(`cronograma-gdocs: ${d.error || 'Error'}`);
+      } catch(e) { errores.push(`cronograma-gdocs: ${e.message}`); }
+    }
+
+    ocultarLoading();
+    wizardIr(4);
+    document.getElementById('confirm-titulo').textContent = `✅ ${nombre} — CC ${cc} registrada`;
+    document.getElementById('confirm-sub').textContent = errores.length
+      ? `Proyecto registrado. Algunos archivos no se subieron: ${errores.join(', ')}. Puedes subirlos desde "Actualizar por obra".`
+      : 'La obra fue registrada correctamente con todos sus archivos.';
+    document.getElementById('confirm-link-dash').href = `/obra.html?cc=${cc}`;
+    await cargarListaObras(cc);
+    renderCoberturaGlobal();
+    toast(errores.length ? 'Obra registrada con advertencias' : 'Obra registrada correctamente', errores.length ? 'warn' : 'ok');
+  } catch(e) {
+    ocultarLoading();
+    toast('Error al registrar la obra: ' + e.message, 'err');
+  }
+}
+
+function wizardReset() {
+  nuevaObraData = { cc: null, nombre: null, archivos: {}, cronogramaUrl: null };
+  document.getElementById('nueva-cc').value = '';
+  document.getElementById('nueva-nombre').value = '';
+  const fNombre = document.getElementById('field-req-nombre');
+  const lNombre = document.getElementById('req-nombre-label');
+  if (fNombre) fNombre.classList.remove('completado');
+  if (lNombre) { lNombre.textContent = '⚠ Requerido'; lNombre.className = 'req-label req-pendiente'; }
+  document.getElementById('nueva-cliente').value = '';
+  document.getElementById('nueva-ubicacion').value = '';
+  document.getElementById('nueva-inicio').value = '';
+  document.getElementById('nueva-fin').value = '';
+  document.getElementById('nueva-cronograma-url').value = '';
+  document.getElementById('nueva-rfc').value = '';
+  document.getElementById('nueva-monto').value = '';
+  document.getElementById('nueva-tipo-contrato').value = '';
+  document.getElementById('nueva-anticipo').value = '';
+  document.getElementById('nueva-retencion').value = '';
+  document.getElementById('nueva-plazo').value = '';
+  document.getElementById('nueva-banco').value = '';
+  document.getElementById('nueva-clabe').value = '';
+  const msg = document.getElementById('vobo-extraccion-msg');
+  if (msg) msg.style.display = 'none';
+  ['contrato','cotizacion','cronograma'].forEach(t => {
+    const st = document.getElementById(`nueva-status-${t}`);
+    const mt = document.getElementById(`nueva-meta-${t}`);
+    if (st) st.innerHTML = '<span class="badge-empty">Opcional</span>';
+    if (mt) mt.textContent = 'Sin cargar';
+  });
+  wizardIr(1);
+}
+
+// ── Drag & Drop ────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.upload-area').forEach(area => {
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('over'); });
+    area.addEventListener('dragleave', () => area.classList.remove('over'));
+    area.addEventListener('drop', e => {
+      e.preventDefault(); area.classList.remove('over');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const input = area.querySelector('input[type=file]');
+        if (input?.onchange) {
+          const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+          input.dispatchEvent(new Event('change'));
+        }
+      }
+    });
+  });
+});
+
+// ── Sección Archivos ───────────────────────────────────────────────────────
+async function renderTablaArchivosGlobal() {
+  const tbody = document.getElementById('tbody-archivos-global');
+  if (!tbody) return;
+  if (!OBRAS_LIST.length) {
+    try {
+      const r = await fetch('/api/proyectos');
+      OBRAS_LIST = await r.json();
+    } catch(e) {}
+  }
+  const iconOk  = '<span style="color:#059669;font-weight:700">✓</span>';
+  const iconNo  = '<span style="color:#cbd5e1">—</span>';
+  // Catálogo global (mismo para todas las obras)
+  const catalogoOk = await fetch('/api/catalogo').then(r=>r.json()).then(d=>Object.keys(d).length>0).catch(()=>false);
+  const rows = await Promise.all(
+    OBRAS_LIST.sort((a,b)=>(a.cc||'').localeCompare(b.cc||'')).map(async o => {
+      let arch = {};
+      try { const r = await fetch(`/api/archivos/${o.cc}`); arch = await r.json(); } catch(e){}
+      // Sección 1: Catálogo/Libros
+      const s1 = [catalogoOk, !!arch.contpaq];
+      // Sección 2: Por obra
+      const s2 = [!!arch.contrato, !!(arch.cotizacion||arch.preciosUnitarios), !!arch.planObra, !!arch.avanceDiario, !!arch.estimaciones, !!arch.cambiosAlcance];
+      const totalChecks = [...s1, ...s2];
+      const pct = Math.round(totalChecks.filter(Boolean).length / totalChecks.length * 100);
+      const color = pct===100?'#166534':pct>=50?'#854d0e':'#94a3b8';
+      return `<tr>
+        <td><strong>${o.nombre||'Obra'}</strong> <span style="color:#94a3b8;font-size:11px">CC ${o.cc}</span></td>
+        <td style="text-align:center">${catalogoOk ? iconOk : iconNo}</td>
+        <td style="text-align:center">${arch.contpaq ? iconOk : iconNo}</td>
+        <td style="text-align:center">${arch.contrato ? iconOk : iconNo}</td>
+        <td style="text-align:center">${arch.cotizacion||arch.preciosUnitarios ? iconOk : iconNo}</td>
+        <td style="text-align:center">${arch.planObra ? iconOk : iconNo}</td>
+        <td style="text-align:center">${arch.avanceDiario ? iconOk : iconNo}</td>
+        <td style="text-align:center">${arch.estimaciones ? iconOk : iconNo}</td>
+        <td><span style="font-weight:700;color:${color}">${pct}%</span></td>
+      </tr>`;
+    })
+  );
+  tbody.innerHTML = rows.join('');
+}
+
+function poblarSelectorArchivos() {
+  const sel = document.getElementById('arch-cc-selector');
+  if (!sel || sel.options.length > 1) return;
+  OBRAS_LIST.sort((a,b)=>(a.cc||'').localeCompare(b.cc||'')).forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.cc;
+    opt.textContent = `${o.nombre||'Obra'} · CC ${o.cc}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function renderDetalleArchivos() {
+  const cc = document.getElementById('arch-cc-selector').value;
+  const el = document.getElementById('detalle-archivos');
+  if (!cc || !el) return;
+  el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:.5rem">Cargando...</div>';
+  try {
+    const r = await fetch(`/api/archivos/${cc}`);
+    const arch = await r.json();
+    const tipos = [
+      { key:'contpaq',       label:'Libro auxiliar ContPAQ',    icon:'🗂️' },
+      { key:'planObra',      label:'Programa de obra',           icon:'📅' },
+      { key:'estimaciones',  label:'Estimaciones al cliente',    icon:'🧾' },
+      { key:'cotizacion',    label:'Cotización / Precios',       icon:'💰' },
+      { key:'preciosUnitarios', label:'Precios unitarios',       icon:'📐' },
+      { key:'contrato',      label:'Contrato',                   icon:'📄' },
+      { key:'avanceDiario',  label:'Avance diario',              icon:'📊' },
+    ];
+    const filas = tipos.map(t => {
+      const meta = arch[t.key];
+      if (!meta?.actual) return `
+        <tr>
+          <td>${t.icon} <strong>${t.label}</strong></td>
+          <td><span class="badge-empty">Sin cargar</span></td>
+          <td style="color:#94a3b8">—</td>
+          <td style="color:#94a3b8">—</td>
+        </tr>`;
+      const a = meta.actual;
+      const prev = meta.anterior;
+      return `
+        <tr>
+          <td>${t.icon} <strong>${t.label}</strong></td>
+          <td><span class="badge-ok">✓ Cargado</span></td>
+          <td style="font-size:12px">${a.nombre||'—'}</td>
+          <td style="font-size:12px;color:#64748b">${a.fechaCarga||'—'}</td>
+        </tr>
+        ${prev ? `<tr style="background:#fafafa">
+          <td style="padding-left:2rem;font-size:11px;color:#94a3b8" colspan="2">↳ Anterior</td>
+          <td style="font-size:11px;color:#94a3b8">${prev.nombre||'—'}</td>
+          <td style="font-size:11px;color:#94a3b8">${prev.fechaCarga||'—'}</td>
+        </tr>` : ''}`;
+    }).join('');
+    el.innerHTML = `
+      <table class="arch-table">
+        <thead><tr><th>Tipo de archivo</th><th>Estado</th><th>Nombre del archivo</th><th>Fecha de carga</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>`;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#dc2626;font-size:13px">Error cargando archivos</div>';
+  }
+}
+// ── fin helpers ────────────────────────────────────────────────────────────
+
+function mostrarLoading(msg) {
+  document.getElementById('loading-text').textContent = msg || 'Procesando...';
+  document.getElementById('loadingOverlay').classList.add('open');
+}
+function ocultarLoading() {
+  document.getElementById('loadingOverlay').classList.remove('open');
+}
+function toast(msg, tipo) {
+  const el = document.getElementById('toast');
+  el.textContent = (tipo === 'ok' ? '✅ ' : '❌ ') + msg;
+  el.className = `toast show ${tipo}`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+</script>
+</body>
+</html>
