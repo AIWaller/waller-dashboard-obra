@@ -414,13 +414,19 @@ function extraerCamposContrato(texto) {
     || str(/domicilio\s+de\s+la\s+obra[:\s]+([^.\n]{10,100})/i);
 
   // Razón social cliente — empresa que aparece como CONTRATANTE
-  // Patrón 1: "la sociedad X, S.A.(P.I.) de C.V." — formato típico contratos Waller
-  const sociedadMatch = t.match(/la\s+sociedad\s+([^,\n]+,\s*S\.A\.(?:P\.I\.)?\s*de\s*C\.V\.?)/i)
-    || t.match(/la\s+sociedad\s+([^,\n]+,\s*S\.\s*de\s*R\.L\.[^,\n]*)/i)
-    || t.match(/la\s+sociedad\s+([^,\n]{5,80})/i);
-  // Patrón 2: "X S.A. de C.V. ... en adelante ... CONTRATANTE"
+  // Patrón 1 (máxima prioridad): "por la otra parte ... [la sociedad] CLIENTE S.A. de C.V."
+  // La primera sociedad es SIEMPRE Waller; la del cliente viene después de "por la otra parte"
+  const otraParteMatch = t.match(/por\s+la\s+otra\s+parte[^S]{0,50}(?:la\s+)?(?:sociedad\s+)?([A-ZÁÉÍÓÚÑ][^,\.]{3,80}(?:S\.A\.(?:P\.I\.)?\s*de\s*C\.V\.|S\.C\.|A\.C\.))/i);
+  // Patrón 2: "X S.A. de C.V. ... [en sucesivo] Cliente o Contratante"
+  const contratanteMatch = t.match(/([A-ZÁÉÍÓÚÑ][^,\.]{3,60}(?:S\.A\.(?:P\.I\.)?\s*de\s*C\.V\.))[^a-z]{0,30}(?:Cliente|Contratante)/i);
+  // Patrón 3: última ocurrencia de "la sociedad X, S.A." (la primera es Waller, la última es el cliente)
+  const todasSociedades = [...t.matchAll(/la\s+sociedad\s+([^,\n]+,\s*S\.A\.(?:P\.I\.)?\s*de\s*C\.V\.?)/gi)];
+  const ultimaSociedad = todasSociedades.length > 1 ? todasSociedades[todasSociedades.length - 1]?.[1]?.trim() : null;
+  // Patrón 4: "X S.A. de C.V. ... en adelante ... CONTRATANTE"
   const clienteMatch = t.match(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s,.]{5,80}(?:S\.A\.?|S\.A\.\s*DE\s*C\.V\.?|S\.\s*de\s*R\.L\.|A\.C\.)(?:\s*de\s*C\.V\.?)?)[,;\s]+(?:en\s+adelante|denominad[ao]|a\s+quien)[^,;]*(?:el\s+)?(?:contratante|cliente)/i);
-  const razonSocialCliente = sociedadMatch?.[1]?.trim()
+  const razonSocialCliente = otraParteMatch?.[1]?.trim()
+    || contratanteMatch?.[1]?.trim()
+    || ultimaSociedad
     || clienteMatch?.[1]?.trim()
     || str(/(?:contratante|cliente)[:\s]+([A-ZÁÉÍÓÚÑ][^.\n;,]{10,80}(?:S\.A|S\.\s*de\s*R|A\.C))/i);
 
@@ -1877,6 +1883,16 @@ module.exports = function(app) {
       // Mapear campos detectados directamente al proyecto
       const val = (k) => campos[k]?.valor || null;
       const existente = leerProyecto(cc) || { cc };
+
+      // CAMBIO 2: fallback de monto — si el contrato remite a Anexo usar cotización
+      let montoContratoFuente = val('montoContrato') ? 'contrato' : null;
+      let montoFromCotizacion = null;
+      if (!val('montoContrato') && existente.cotizacion?.totalPresupuesto) {
+        campos['montoContrato'] = { valor: existente.cotizacion.totalPresupuesto, noAplica: false };
+        montoContratoFuente = 'cotizacion';
+        montoFromCotizacion = existente.cotizacion.totalPresupuesto;
+      }
+
       const actualizado = {
         ...existente,
         contrato: { archivoPdf, camposDetectados, campos },
@@ -1902,6 +1918,7 @@ module.exports = function(app) {
       actualizarMetaArchivo(cc, 'contrato', req.file.originalname || req.file.filename);
 
       res.json({ ok: true, archivoPdf, textoCompleto: textoCompleto.slice(0, 20000), camposDetectados, campos,
+        montoContratoFuente, montoFromCotizacion,
         mensaje: `Contrato guardado. Se detectaron ${camposDetectados} de 31 campos.` });
 
     } catch(e) {
@@ -2360,6 +2377,44 @@ module.exports = function(app) {
   });
 
   // ── Proxy Gemini (texto) ──────────────────────────────────────────────────
+  // DELETE /api/archivos/:cc/:tipo — eliminar archivo y limpiar campos del JSON
+  app.delete('/api/archivos/:cc/:tipo', (req, res) => {
+    const { cc, tipo } = req.params;
+    try {
+      const proyecto = leerProyecto(cc);
+      if (!proyecto) return res.status(404).json({ error: 'Proyecto no encontrado: ' + cc });
+
+      // Eliminar archivo físico (solo contratos tienen almacenamiento permanente)
+      if (tipo === 'contrato' && proyecto.contrato?.archivoPdf) {
+        const filePath = path.join(__dirname, '..', proyecto.contrato.archivoPdf);
+        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(e) {}
+      }
+
+      // Campos de datos a limpiar según tipo
+      const camposALimpiar = {
+        contrato:         ['contrato', 'cliente', 'rfcCliente', 'repLegalCliente', 'fechaInicio', 'fechaFin',
+                           'montoContrato', 'montoContratoFuente', 'anticipoPct', 'retencionPct', 'tipoContrato',
+                           'plazoEjecucionDias', 'banco', 'clabe', 'folioContrato'],
+        contpaq:          ['partidas', 'partidasDetalle', 'totalEgresado', 'ultimaActualizacion'],
+        planObra:         ['cronograma'],
+        cotizacion:       ['cotizacion', 'preciosUnitarios'],
+        preciosUnitarios: ['cotizacion', 'preciosUnitarios'],
+        avanceDiario:     ['_avanceDiario', '_m2InstalPorNivel', '_totalM2Instalado', '_ultimaActAvance', 'avancePorNivel'],
+        estimaciones:     ['estimaciones'],
+        cambiosAlcance:   ['cambiosAlcance'],
+      };
+      (camposALimpiar[tipo] || []).forEach(f => { delete proyecto[f]; });
+
+      // Limpiar metadata del archivo
+      if (proyecto._archivos) delete proyecto._archivos[tipo];
+
+      guardarProyecto(cc, proyecto);
+      res.json({ ok: true, mensaje: `Archivo '${tipo}' eliminado del proyecto ${cc}` });
+    } catch(e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post('/api/gemini', async (req, res) => {
     try {
       const { prompt } = req.body;

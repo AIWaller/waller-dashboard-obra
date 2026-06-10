@@ -761,6 +761,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202
 let CC_ACTUAL = null;
 let OBRAS_LIST = [];
 let nuevaObraData = { cc: null, nombre: null, archivos: {} };
+let pendienteArchivos = {}; // archivos en espera de confirmación
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -912,90 +913,145 @@ async function renderCoberturaGlobal() {
 // ── Subir Catálogo de cuentas ──────────────────────────────────────────────
 async function subirCatalogo(file) {
   if (!file) return;
-  mostrarLoading('Procesando catálogo de cuentas...');
-  const fd = new FormData();
-  fd.append('archivo', file);
-  try {
-    const res = await fetch('/api/upload/catalogo', { method: 'POST', body: fd });
-    const data = await res.json();
-    ocultarLoading();
-    if (data.ok) {
-      document.getElementById('status-catalogo').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
-      document.getElementById('meta-catalogo').textContent = `${data.cuentasNuevas || 0} cuentas nuevas · ${new Date().toLocaleDateString('es-MX')}`;
-      document.getElementById('result-catalogo').innerHTML = `<div class="vobo-box" style="margin-top:.75rem"><h3>✅ Catálogo actualizado</h3><div class="vobo-row"><span class="vobo-label">Cuentas nuevas agregadas</span><span class="vobo-value">${data.cuentasNuevas || 0}</span></div><div class="vobo-row"><span class="vobo-label">Cuentas de referencia</span><span class="vobo-value">${data.cuentasExistentes || 0}</span></div></div>`;
-      toast('Catálogo actualizado correctamente', 'ok');
-      renderCoberturaGlobal();
-    } else {
-      toast(data.error || 'Error al procesar catálogo', 'err');
-    }
-  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+  pendienteArchivos['catalogo'] = file;
+  mostrarConfirmacionArchivo('catalogo', file);
 }
 
 // ── Subir ContPAQ ──────────────────────────────────────────────────────────
 async function subirContpaq(file) {
   if (!file) return;
-  mostrarLoading('Procesando libro auxiliar ContPAQ...');
-  const fd = new FormData();
-  fd.append('archivo', file);
-  try {
-    const res = await fetch('/api/upload/contpaq', { method: 'POST', body: fd });
-    const data = await res.json();
-    ocultarLoading();
-    if (data.ok) {
-      document.getElementById('status-contpaq').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
-      const total = data.obras?.reduce((s,o) => s + o.totalEgresado, 0) || 0;
-      document.getElementById('meta-contpaq').textContent = `${data.obras?.length || 0} obras · $${Math.round(total/1000)}K total · ${new Date().toLocaleDateString('es-MX')}`;
-      document.getElementById('result-contpaq').innerHTML = `<div class="vobo-box" style="margin-top:.75rem"><h3>✅ ${data.mensaje}</h3>${(data.obras||[]).map(o=>`<div class="vobo-row"><span class="vobo-label">${o.nombre} CC ${o.cc}</span><span class="vobo-value">$${Math.round(o.totalEgresado).toLocaleString('es-MX')}</span></div>`).join('')}</div>`;
-      toast(data.mensaje, 'ok');
-      renderCoberturaGlobal();
-      // Recargar obras
-      await cargarListaObras(CC_ACTUAL);
-    } else {
-      toast(data.error || 'Error al procesar ContPAQ', 'err');
-    }
-  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+  pendienteArchivos['contpaq'] = file;
+  mostrarConfirmacionArchivo('contpaq', file);
 }
 
 // ── Subir archivo por obra ─────────────────────────────────────────────────
 async function subirArchivo(tipo, file) {
   if (tipo === 'contrato') { await subirContrato(file); return; }
   if (!file || !CC_ACTUAL) { toast('Selecciona una obra primero', 'err'); return; }
+  pendienteArchivos[tipo] = file;
+  mostrarConfirmacionArchivo(tipo, file);
+}
+
+// ── Flujo de confirmación genérico ─────────────────────────────────────────
+function mostrarConfirmacionArchivo(tipo, file) {
+  const labels = {
+    cotizacion:  'Cotización / Precios unitarios',
+    cronograma:  'Programa de obra',
+    avanceDiario:'Avance de obra',
+    estimacion:  'Estimación al cliente',
+    contpaq:     'Libro auxiliar ContPAQ',
+    catalogo:    'Catálogo de cuentas',
+  };
+  const kb = Math.round((file.size||0) / 1024);
+  const label = labels[tipo] || tipo;
+  const resultId = `result-${tipo}`;
+  const resultEl = document.getElementById(resultId);
+  if (!resultEl) return;
+  resultEl.innerHTML = `
+    <div style="margin-top:.75rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:.9rem">
+      <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:.4rem">Archivo listo para subir</div>
+      <div style="font-size:13px;color:#1e293b;margin-bottom:.65rem">
+        <strong>${escHtml(file.name)}</strong>
+        <span style="color:#64748b;font-size:11px"> · ${kb} KB · ${label}</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-success btn-sm" onclick="confirmarArchivo('${tipo}')">
+          <i class="ti ti-check"></i> Confirmar y subir
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelarArchivo('${tipo}')">✗ Cancelar</button>
+      </div>
+    </div>`;
+  const statusEl = document.getElementById(`status-${tipo}`);
+  if (statusEl) statusEl.innerHTML = '<span class="badge-warn">⚠ Pendiente</span>';
+}
+
+async function confirmarArchivo(tipo) {
+  const file = pendienteArchivos[tipo];
+  if (!file) { toast('No hay archivo pendiente', 'err'); return; }
   mostrarLoading('Procesando ' + tipo + '...');
   const fd = new FormData();
   fd.append('archivo', file);
-  fd.append('cc', CC_ACTUAL);
 
-  const endpoints = {
-    cronograma: `/api/upload/cronograma/${CC_ACTUAL}`,
-    estimacion: '/api/upload/estimacion',
-    cotizacion: `/api/upload/auto/${CC_ACTUAL}`,
-    contrato:   `/api/upload/contrato/${CC_ACTUAL}`,
-    avanceDiario: `/api/upload/auto/${CC_ACTUAL}`,
-  };
-
-  const url = endpoints[tipo] || `/api/upload/auto/${CC_ACTUAL}`;
-  if (tipo === 'cotizacion' || tipo === 'avanceDiario') {
-    fd.append('tipo', tipo);
-    fd.append('confirmar', '1');
+  let url;
+  if (tipo === 'contpaq') {
+    url = '/api/upload/contpaq';
+  } else if (tipo === 'catalogo') {
+    url = '/api/upload/catalogo';
+  } else {
+    if (!CC_ACTUAL) { ocultarLoading(); toast('Selecciona una obra primero', 'err'); return; }
+    fd.append('cc', CC_ACTUAL);
+    const eps = {
+      cronograma:  `/api/upload/cronograma/${CC_ACTUAL}`,
+      estimacion:  '/api/upload/estimacion',
+      cotizacion:  `/api/upload/auto/${CC_ACTUAL}`,
+      avanceDiario:`/api/upload/auto/${CC_ACTUAL}`,
+    };
+    url = eps[tipo] || `/api/upload/auto/${CC_ACTUAL}`;
+    if (tipo === 'cotizacion' || tipo === 'avanceDiario') { fd.append('tipo', tipo); fd.append('confirmar', '1'); }
   }
 
   try {
     const res = await fetch(url, { method: 'POST', body: fd });
     const data = await res.json();
     ocultarLoading();
+    delete pendienteArchivos[tipo];
+
     if (data.ok || data.mensaje) {
-      const statusEl = document.getElementById(`status-${tipo}`);
-      const metaEl = document.getElementById(`meta-${tipo}`);
-      if (statusEl) statusEl.innerHTML = '<span class="badge-ok">✓ Cargado</span>';
-      if (metaEl) metaEl.textContent = file.name + ' · ' + new Date().toLocaleDateString('es-MX');
-      const resultEl = document.getElementById(`result-${tipo}`);
-      if (resultEl && data.mensaje) resultEl.innerHTML = `<div style="margin-top:.5rem;font-size:12px;color:#166534;font-weight:600">✅ ${data.mensaje}</div>`;
-      toast(data.mensaje || 'Archivo cargado correctamente', 'ok');
-      cargarArchivosMeta();
+      if (tipo === 'contpaq') {
+        document.getElementById('status-contpaq').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+        const total = data.obras?.reduce((s,o)=>s+o.totalEgresado,0)||0;
+        document.getElementById('meta-contpaq').textContent = `${data.obras?.length||0} obras · $${Math.round(total/1000)}K · ${new Date().toLocaleDateString('es-MX')}`;
+        document.getElementById('result-contpaq').innerHTML = `<div class="vobo-box" style="margin-top:.75rem"><h3>✅ ${data.mensaje}</h3>${(data.obras||[]).map(o=>`<div class="vobo-row"><span class="vobo-label">${o.nombre} CC ${o.cc}</span><span class="vobo-value">$${Math.round(o.totalEgresado).toLocaleString('es-MX')}</span></div>`).join('')}</div>`;
+        toast(data.mensaje, 'ok');
+        renderCoberturaGlobal();
+        await cargarListaObras(CC_ACTUAL);
+      } else if (tipo === 'catalogo') {
+        document.getElementById('status-catalogo').innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+        document.getElementById('meta-catalogo').textContent = `${data.cuentasNuevas||0} cuentas nuevas · ${new Date().toLocaleDateString('es-MX')}`;
+        document.getElementById('result-catalogo').innerHTML = `<div class="vobo-box" style="margin-top:.75rem"><h3>✅ Catálogo actualizado</h3><div class="vobo-row"><span class="vobo-label">Cuentas nuevas</span><span class="vobo-value">${data.cuentasNuevas||0}</span></div><div class="vobo-row"><span class="vobo-label">Cuentas de referencia</span><span class="vobo-value">${data.cuentasExistentes||0}</span></div></div>`;
+        toast('Catálogo actualizado correctamente', 'ok');
+        renderCoberturaGlobal();
+      } else {
+        const statusEl = document.getElementById(`status-${tipo}`);
+        const metaEl = document.getElementById(`meta-${tipo}`);
+        if (statusEl) statusEl.innerHTML = '<span class="badge-ok">✓ Cargado</span>';
+        if (metaEl) metaEl.textContent = file.name + ' · ' + new Date().toLocaleDateString('es-MX');
+        const resultEl = document.getElementById(`result-${tipo}`);
+        if (resultEl) resultEl.innerHTML = `<div style="margin-top:.5rem;font-size:12px;color:#166534;font-weight:600">✅ ${data.mensaje||'Archivo guardado correctamente'}</div>`;
+        toast(data.mensaje || 'Archivo guardado correctamente', 'ok');
+        cargarArchivosMeta();
+      }
     } else {
       toast(data.error || 'Error al procesar archivo', 'err');
+      cancelarArchivo(tipo);
     }
-  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); }
+  } catch(e) { ocultarLoading(); toast('Error de conexión', 'err'); cancelarArchivo(tipo); }
+}
+
+function cancelarArchivo(tipo) {
+  delete pendienteArchivos[tipo];
+  const resultEl = document.getElementById(`result-${tipo}`);
+  if (resultEl) resultEl.innerHTML = '';
+  const statusEl = document.getElementById(`status-${tipo}`);
+  if (statusEl) statusEl.innerHTML = '<span class="badge-empty">Vacío</span>';
+}
+
+async function eliminarArchivo(cc, tipo, nombre) {
+  const labels = { contrato:'Contrato', cotizacion:'Cotización', cronograma:'Cronograma', contpaq:'ContPAQ', estimaciones:'Estimaciones', catalogo:'Catálogo de conceptos' };
+  const label = labels[tipo] || tipo;
+  if (!confirm(`¿Eliminar ${label}${nombre ? ' (' + nombre + ')' : ''} del proyecto ${cc}?\n\nEsta acción no se puede deshacer.`)) return;
+  try {
+    const res = await fetch(`/api/archivos/${cc}/${tipo}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) {
+      toast(`${label} eliminado correctamente`, 'ok');
+      await renderDetalleArchivos();
+    } else {
+      toast(data.error || 'Error al eliminar', 'err');
+    }
+  } catch(e) {
+    toast('Error de conexión al eliminar', 'err');
+  }
 }
 
 // ── Contrato — upload con revisión de campos ───────────────────────────────
@@ -1033,7 +1089,9 @@ function mostrarFormContratoRevision(data) {
         📋 Revisar datos extraídos
         <span style="font-weight:400;color:#64748b;font-size:12px">— ${data.camposDetectados||0} campos detectados automáticamente</span>
       </div>
-      ${data.aviso ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;font-size:12px;color:#854d0e;margin-bottom:.75rem">⚠ ${data.aviso}</div>` : ''}
+      ${data.aviso ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;font-size:12px;color:#854d0e;margin-bottom:.5rem">⚠ ${data.aviso}</div>` : ''}
+      ${data.montoContratoFuente === 'cotizacion' ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;font-size:12px;color:#854d0e;margin-bottom:.5rem">💡 Monto tomado de la cotización ($${Number(data.montoFromCotizacion||0).toLocaleString('es-MX')}) — el contrato remite a un Anexo. Revisa y autoriza antes de guardar.</div>` : ''}
+      ${!data.montoContratoFuente ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:.5rem .75rem;font-size:12px;color:#991b1b;margin-bottom:.5rem">⚠ No se encontró monto en el contrato ni en cotización — ingresa el monto manualmente.</div>` : ''}
       <div class="field-grid">
         <div class="field" style="grid-column:1/-1">
           <label>Cliente / Razón social</label>
@@ -1782,25 +1840,29 @@ async function renderDetalleArchivos() {
           <td><span class="badge-empty">Sin cargar</span></td>
           <td style="color:#94a3b8">—</td>
           <td style="color:#94a3b8">—</td>
+          <td></td>
         </tr>`;
       const a = meta.actual;
       const prev = meta.anterior;
+      const nomEsc = (a.nombre||'').replace(/'/g,"\\'");
       return `
         <tr>
           <td>${t.icon} <strong>${t.label}</strong></td>
           <td><span class="badge-ok">✓ Cargado</span></td>
           <td style="font-size:12px">${a.nombre||'—'}</td>
           <td style="font-size:12px;color:#64748b">${a.fechaCarga||'—'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="eliminarArchivo('${cc}','${t.key}','${nomEsc}')">🗑 Eliminar</button></td>
         </tr>
         ${prev ? `<tr style="background:#fafafa">
           <td style="padding-left:2rem;font-size:11px;color:#94a3b8" colspan="2">↳ Anterior</td>
           <td style="font-size:11px;color:#94a3b8">${prev.nombre||'—'}</td>
           <td style="font-size:11px;color:#94a3b8">${prev.fechaCarga||'—'}</td>
+          <td></td>
         </tr>` : ''}`;
     }).join('');
     el.innerHTML = `
       <table class="arch-table">
-        <thead><tr><th>Tipo de archivo</th><th>Estado</th><th>Nombre del archivo</th><th>Fecha de carga</th></tr></thead>
+        <thead><tr><th>Tipo de archivo</th><th>Estado</th><th>Nombre del archivo</th><th>Fecha de carga</th><th></th></tr></thead>
         <tbody>${filas}</tbody>
       </table>`;
   } catch(e) {
