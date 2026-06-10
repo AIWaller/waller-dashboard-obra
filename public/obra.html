@@ -563,9 +563,15 @@ const pill = (pct, max=100) => {
 
 // ─── Estado global ─────────────────────────────────────────────────────────
 let OBRA_DATA = null;
+let METRICAS = null;
 let MONTO_CONTRATO = 4721177;
 let chartsInited = false;
 let flujoChartInited = false;
+
+function destroyChart(id) {
+  const existing = typeof Chart !== 'undefined' ? Chart.getChart(id) : null;
+  if (existing) existing.destroy();
+}
 
 // ─── Carga de datos desde API ───────────────────────────────────────────────
 async function loadData() {
@@ -580,14 +586,16 @@ async function loadData() {
     return;
   }
   try {
-    const [respProyecto, respArchivos] = await Promise.all([
+    const [respProyecto, respArchivos, respMetricas] = await Promise.all([
       fetch('/api/proyectos/' + CC_ACTUAL),
-      fetch('/api/archivos/' + CC_ACTUAL)
+      fetch('/api/archivos/' + CC_ACTUAL),
+      fetch('/api/proyectos/' + CC_ACTUAL + '/metricas')
     ]);
     if (!respProyecto.ok) throw new Error('Obra CC ' + CC_ACTUAL + ' no encontrada');
     OBRA_DATA = await respProyecto.json();
     MONTO_CONTRATO = OBRA_DATA.montoContrato || MONTO_CONTRATO;
     if (respArchivos.ok) ARCHIVOS_SERVER = await respArchivos.json();
+    if (respMetricas.ok) METRICAS = await respMetricas.json();
     renderDashboard(OBRA_DATA);
   } catch(e) {
     const main = document.querySelector('.main');
@@ -688,6 +696,32 @@ function renderDashboard(d) {
   renderVariaciones(d);
   renderCronograma(d);
   renderCambios(d);
+  renderNiveles();
+
+  // Semáforos desde METRICAS
+  if (METRICAS && METRICAS.resumen) {
+    const r = METRICAS.resumen;
+    const clrCosto = r.alerta_costo === 'critico' ? '#dc2626' : r.alerta_costo === 'atencion' ? '#d97706' : r.alerta_costo === 'ok' ? '#059669' : '#94a3b8';
+    const clrTiempo = r.alerta_tiempo === 'critico' ? '#dc2626' : r.alerta_tiempo === 'atencion' ? '#d97706' : r.alerta_tiempo === 'ok' ? '#059669' : '#94a3b8';
+    const lblCosto = r.alerta_costo ? { critico:'⚠ Costo crítico', atencion:'↑ Costo en atención', ok:'✓ Costo OK' }[r.alerta_costo] : '— Sin datos';
+    const lblTiempo = r.alerta_tiempo ? { critico:'⚠ Plazo crítico', atencion:'↑ Plazo en atención', ok:'✓ Plazo OK' }[r.alerta_tiempo] : '— Sin datos';
+    const cpiVal = METRICAS.evm && METRICAS.evm.CPI !== null ? 'CPI ' + METRICAS.evm.CPI.toFixed(2) : '—';
+    const spiVal = METRICAS.evm && METRICAS.evm.SPI !== null ? 'SPI ' + METRICAS.evm.SPI.toFixed(2) : '—';
+    let semHTML = document.getElementById('kpi-semaforos');
+    if (!semHTML) {
+      const kpiGrid = document.querySelector('#s-resumen .kpi-grid');
+      if (kpiGrid) {
+        const div = document.createElement('div');
+        div.id = 'kpi-semaforos';
+        div.style.cssText = 'display:contents';
+        kpiGrid.appendChild(div);
+        semHTML = div;
+      }
+    }
+    if (semHTML) semHTML.innerHTML = `
+      <div class="kpi"><div class="label"><i class="ti ti-coin"></i> Eficiencia de costo</div><div class="value" style="font-size:20px;color:${clrCosto}">${cpiVal}</div><div class="sub" style="color:${clrCosto}">${lblCosto}</div></div>
+      <div class="kpi"><div class="label"><i class="ti ti-clock"></i> Eficiencia de tiempo</div><div class="value" style="font-size:20px;color:${clrTiempo}">${spiVal}</div><div class="sub" style="color:${clrTiempo}">${lblTiempo}</div></div>`;
+  }
 
   // Estimaciones tab
   set('est-kpi-contrato', fmtK(monto));
@@ -708,138 +742,210 @@ function renderDashboard(d) {
 }
 
 function renderEVM(d) {
-  const monto    = d.montoContrato || 0;
-  const egresado = d.totalEgresado || 0;
-  const ests     = d.estimaciones || [];
+  const evm = METRICAS && METRICAS.evm ? METRICAS.evm : null;
+  const bac = (evm && evm.BAC) || d.montoContrato || 0;
+  const ac  = (evm && evm.AC  != null) ? evm.AC  : (d.totalEgresado || 0);
+  const ev  = (evm && evm.EV  != null) ? evm.EV  : 0;
+  const pv  = evm ? evm.PV  : null;
+  const cpi = evm ? evm.CPI : null;
+  const spi = evm ? evm.SPI : null;
+  const cv  = evm ? evm.CV  : null;
+  const sv  = evm ? evm.SV  : null;
+  const eacProb = evm ? evm.EAC_probable : null;
+  const eacOpt  = evm ? evm.EAC_optimista : null;
+  const eacPes  = evm ? evm.EAC_pesimista : null;
+  const etc  = evm ? evm.ETC  : null;
+  const vac  = evm ? evm.VAC  : null;
+  const tcpi = evm ? evm.TCPI : null;
+  const curva = (evm && evm.curva) ? evm.curva : [];
+  const totalM2 = (d.cronograma && d.cronograma.totalM2) || (METRICAS && METRICAS.gantt ? METRICAS.gantt.totalM2 : 0);
+  const ests = d.estimaciones || [];
+  const ultima = ests[ests.length-1];
+  const m2Acum = ultima ? (ultima.m2Acum || 0) : 0;
 
-  // No data: no monto or no avance diario loaded
-  if (!monto || (!egresado && !ests.length)) {
-    const diagEl = document.getElementById('evm-diag');
-    if (diagEl) {
-      diagEl.className = 'diag amarillo';
-      set('evm-diag-title', 'Para activar EVM conecta el avance diario en Centro de Carga');
-      set('evm-diag-body', 'Este módulo requiere: Plan de obra (cronograma), avance diario y datos de ContPAQ.');
-      const lista = document.getElementById('evm-diag-lista');
-      if (lista) lista.innerHTML = '';
-    }
-    const tbody = document.getElementById('evm-proyecciones');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:1rem">Para activar EVM conecta el avance diario en Centro de Carga.</td></tr>';
+  const diagEl = document.getElementById('evm-diag');
+  const tbody  = document.getElementById('evm-proyecciones');
+
+  if (!bac || (!ac && !ests.length)) {
+    if (diagEl) { diagEl.className = 'diag amarillo'; set('evm-diag-title', 'Carga estimaciones para activar EVM'); set('evm-diag-body', 'Este módulo requiere: Plan de obra (cronograma), estimaciones y datos de ContPAQ.'); document.getElementById('evm-diag-lista').innerHTML = ''; }
+    if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#94a3b8;padding:1rem">Carga estimaciones y ContPAQ para activar EVM.</td></tr>';
     return;
   }
 
-  const ultima   = ests[ests.length - 1];
-  const totalM2  = (d.cronograma && d.cronograma.totalM2) || 0;
-  const m2Acum   = ultima ? ultima.m2Acum : 0;
-  const pctM2    = totalM2 > 0 ? m2Acum / totalM2 : 0;
-  const pctEgr   = monto > 0 ? egresado / monto : 0;
-
-  // Earned Value = avance físico % × BAC
-  const ev  = pctM2 * monto;
-  const ac  = egresado;
-  const bac = monto;
-  const cpi = ac > 0 ? ev / ac : null;
-  const eac = cpi && cpi > 0 ? bac / cpi : null;
-  const vac = eac ? bac - eac : null;
+  const pctM2  = totalM2 > 0 && m2Acum > 0 ? m2Acum/totalM2 : 0;
+  const pctEgr = bac > 0 ? ac/bac : 0;
 
   set('evm-bac', fmtK(bac));
-  set('evm-pct-m2', (pctM2 * 100).toFixed(1) + '%');
+  set('evm-pct-m2', (pctM2*100).toFixed(1) + '%');
   set('evm-pct-m2-hint', Math.round(m2Acum) + ' m² instalados de ' + Math.round(totalM2) + ' m² totales');
   set('evm-ev', fmtK(ev));
-  set('evm-ev-hint', 'Avance físico ' + (pctM2 * 100).toFixed(1) + '% × contrato');
+  set('evm-ev-hint', 'Avance físico ' + (pctM2*100).toFixed(1) + '% × BAC');
   set('evm-ac', fmtK(ac));
-  set('evm-ac-hint', 'Gasto real · ' + (pctEgr * 100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
+  set('evm-ac-hint', 'Gasto real · ' + (pctEgr*100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
 
-  if (cpi !== null) {
-    const cpiEl = document.getElementById('evm-cpi');
-    if (cpiEl) {
-      cpiEl.textContent = cpi.toFixed(2);
-      cpiEl.className = 'idx-val ' + (cpi >= 1 ? 'ok' : cpi >= 0.75 ? 'warn' : 'danger');
-    }
-    set('evm-cpi-desc', `Por cada peso gastado se generan $${cpi.toFixed(2)} de valor instalado. ${cpi >= 1 ? 'Eficiencia óptima.' : 'Se normalizará conforme avance la instalación.'}`);
-  }
-  if (eac !== null) {
-    const eacEl = document.getElementById('evm-eac');
-    if (eacEl) {
-      eacEl.textContent = fmtK(eac);
-      eacEl.className = 'idx-val ' + (eac <= bac ? 'ok' : 'danger');
-    }
-    const vacStr = vac >= 0 ? `Ahorro estimado: ${fmtK(vac)}` : `Excedente estimado: ${fmtK(Math.abs(vac))}`;
-    set('evm-eac-desc', `Al ritmo actual de gasto vs avance. ${vacStr}.`);
-  }
+  const cpiEl = document.getElementById('evm-cpi');
+  if (cpiEl) { cpiEl.textContent = cpi !== null ? cpi.toFixed(2) : '—'; cpiEl.className = 'idx-val ' + (cpi === null ? '' : cpi >= 1 ? '' : cpi >= 0.75 ? 'warn' : 'danger'); }
+  set('evm-cpi-desc', cpi !== null ? `Por cada peso gastado se generan $${cpi.toFixed(2)} de valor instalado. ${cpi >= 1 ? 'Eficiencia óptima.' : cpi >= 0.85 ? 'Leve sobrecosto.' : 'Sobrecosto significativo.'}` : 'Sin datos suficientes.');
+  const eacEl = document.getElementById('evm-eac');
+  if (eacEl) { eacEl.textContent = eacProb ? fmtK(eacProb) : '—'; eacEl.className = 'idx-val ' + (eacProb ? (eacProb <= bac ? '' : 'danger') : ''); }
+  set('evm-eac-desc', eacProb ? `Al ritmo actual. ${vac !== null ? (vac >= 0 ? 'Ahorro estimado: ' + fmtK(vac) : 'Excedente estimado: ' + fmtK(Math.abs(vac))) : ''}.` : 'Sin CPI disponible.');
 
-  // Proyecciones table
-  const tbody = document.getElementById('evm-proyecciones');
-  if (tbody && bac > 0) {
-    const etc = eac ? eac - ev : null;
-    const pctEjec = (pctM2 * 100).toFixed(1);
-    const pctFin  = (pctEgr * 100).toFixed(1);
+  if (tbody) {
+    const nd = v => v !== null && v !== undefined ? v : null;
+    const fv = v => v !== null ? fmtK(v) : '—';
+    const fn = v => v !== null ? v.toFixed(2) : '—';
     tbody.innerHTML = `
-      <tr><td>Costo final estimado al terminar (EAC)</td><td style="font-weight:600;color:${eac && eac > bac ? '#dc2626' : '#059669'}">${eac ? fmtK(eac) : '—'}</td><td>Si el CPI actual (${cpi ? cpi.toFixed(2) : '—'}) se mantiene hasta el cierre</td></tr>
-      <tr><td>Lo que falta por gastar (ETC)</td><td>${etc ? fmtK(etc) : '—'}</td><td>Gasto restante estimado para terminar la obra</td></tr>
-      <tr><td>Ahorro o excedente al terminar (VAC)</td><td style="color:${vac >= 0 ? '#059669' : '#dc2626'}">${vac !== null ? fmtK(vac) : '—'}</td><td>Diferencia entre presupuesto y costo final estimado</td></tr>
-      <tr><td>Avance físico real</td><td>${pctEjec}%</td><td>${Math.round(m2Acum)} m² instalados de ${Math.round(totalM2)} m² totales</td></tr>
-      <tr><td>Avance financiero (egresado)</td><td>${pctFin}%</td><td>${fmtK(egresado)} gastados de ${fmtK(bac)} presupuestados</td></tr>
-    `;
+      <tr><td>CPI — Eficiencia de costo</td><td style="font-weight:600;color:${cpi===null?'#94a3b8':cpi>=1?'#059669':cpi>=0.85?'#d97706':'#dc2626'}">${fn(cpi)}</td><td>objetivo ≥ 1.00 — mayor = más eficiente</td></tr>
+      <tr><td>SPI — Eficiencia de tiempo</td><td style="font-weight:600;color:${spi===null?'#94a3b8':spi>=1?'#059669':spi>=0.85?'#d97706':'#dc2626'}">${fn(spi)}</td><td>${spi===null?'Requiere fechaInicio y fechaFin':'objetivo ≥ 1.00'}</td></tr>
+      <tr><td>CV — Variación de costo</td><td style="color:${cv===null?'#94a3b8':cv>=0?'#059669':'#dc2626'}">${fv(cv)}</td><td>EV − AC · positivo = bajo presupuesto</td></tr>
+      <tr><td>SV — Variación de cronograma</td><td style="color:${sv===null?'#94a3b8':sv>=0?'#059669':'#dc2626'}">${fv(sv)}</td><td>${sv===null?'Requiere PV (fechas contrato)':'EV − PV · positivo = adelantado'}</td></tr>
+      <tr style="background:#f8fafc"><td colspan="3" style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:12px">Proyecciones de costo al terminar (EAC)</td></tr>
+      <tr><td>EAC optimista (AC + trabajo restante)</td><td>${fv(eacOpt)}</td><td>Si el trabajo restante se ejecuta al 100% eficiencia</td></tr>
+      <tr><td>EAC probable (BAC / CPI)</td><td style="font-weight:600;color:${eacProb===null?'#94a3b8':eacProb<=bac?'#059669':'#dc2626'}">${fv(eacProb)}</td><td>Al ritmo actual de gasto — más probable</td></tr>
+      <tr><td>EAC pesimista (CPI×SPI)</td><td style="color:${eacPes===null?'#94a3b8':'#dc2626'}">${fv(eacPes)}</td><td>${eacPes===null?'Requiere SPI (fechas contrato)':'Peor escenario combinando costo y tiempo'}</td></tr>
+      <tr><td>ETC — Por gastar estimado</td><td>${fv(etc)}</td><td>EAC probable − AC</td></tr>
+      <tr><td>VAC — Variación al cierre</td><td style="color:${vac===null?'#94a3b8':vac>=0?'#059669':'#dc2626'}">${fv(vac)}</td><td>BAC − EAC · positivo = ahorro</td></tr>
+      <tr><td>TCPI — Eficiencia requerida</td><td style="font-weight:600;color:${tcpi===null?'#94a3b8':tcpi<=1.1?'#059669':tcpi<=1.2?'#d97706':'#dc2626'}">${fn(tcpi)}</td><td>Eficiencia necesaria en trabajo restante para llegar a BAC</td></tr>`;
   }
 
-  // Diagnóstico dinámico
-  const diagEl = document.getElementById('evm-diag');
-  if (diagEl && bac > 0) {
-    const pctEjercido = (pctEgr * 100).toFixed(1);
-    const pctInstalado = (pctM2 * 100).toFixed(1);
-    const malo = pctEgr > pctM2 * 1.3;
-    diagEl.className = 'diag ' + (malo ? 'rojo' : pctEgr > pctM2 ? 'amarillo' : 'verde');
-    const icono = malo ? '🔴' : pctEgr > pctM2 ? '⚠' : '✅';
-    set('evm-diag-title', `${icono} Ritmo de instalación ${malo ? 'muy por debajo del gasto' : 'en seguimiento'}`);
-    set('evm-diag-body', `Se gastó el ${pctEjercido}% del presupuesto pero solo se instaló el ${pctInstalado}% del total. CPI = ${cpi ? cpi.toFixed(2) : '—'}.`);
-    document.getElementById('evm-diag-lista').innerHTML = malo
-      ? '<li>Residente: incrementar ritmo de instalación.</li><li>Dirección: evaluar segunda cuadrilla para recuperar programa.</li><li>Contabilidad: la próxima estimación al cliente debe incluir mano de obra e indirectos.</li>'
-      : '';
+  // Diagnóstico
+  if (diagEl) {
+    const malo = cpi !== null && cpi < 0.85;
+    const atenc = cpi !== null && cpi < 1;
+    diagEl.className = 'diag ' + (malo ? 'rojo' : atenc ? 'amarillo' : 'verde');
+    const icono = malo ? '🔴' : atenc ? '⚠' : '✅';
+    set('evm-diag-title', `${icono} EVM activo — CPI ${cpi !== null ? cpi.toFixed(2) : '—'} ${cpi === null ? '(sin datos)' : cpi >= 1 ? '· eficiencia óptima' : cpi >= 0.85 ? '· leve sobrecosto' : '· sobrecosto crítico'}`);
+    set('evm-diag-body', `EV ${fmtK(ev)} · AC ${fmtK(ac)} · BAC ${fmtK(bac)}.${pv !== null ? ' PV ' + fmtK(pv) + '.' : ' PV: sin fechas de contrato.'}`);
+    document.getElementById('evm-diag-lista').innerHTML = malo ? '<li>Revisar productividad y ritmo de instalación.</li><li>Evaluar segunda cuadrilla para recuperar programa.</li>' : '';
+  }
+
+  // Gráfica EVM con curva real
+  destroyChart('evm-chart');
+  const ctxE = document.getElementById('evm-chart');
+  if (!ctxE) return;
+  if (curva.length > 0) {
+    const labels = curva.map(p => 'Est ' + p.numero);
+    const evData = curva.map(p => p.ev);
+    const acData = curva.map(p => p.ac);
+    const pvData = curva.map(p => p.pv);
+    const tienePV = pvData.some(v => v !== null);
+    const datasets = [
+      { label: 'EV — Valor ganado', data: evData, borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.07)', tension: 0.3, fill: false, pointRadius: 5, pointBackgroundColor: '#059669' },
+      { label: 'AC — Costo real', data: acData, borderColor: '#1B6BB0', backgroundColor: 'rgba(27,107,176,0.07)', tension: 0.3, fill: false, pointRadius: 5, pointBackgroundColor: '#1B6BB0' }
+    ];
+    if (tienePV) datasets.unshift({ label: 'PV — Valor planificado', data: pvData, borderColor: '#94a3b8', borderDash: [5,5], tension: 0.3, fill: false, pointRadius: 3 });
+    new Chart(ctxE, { type: 'line', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K' } } } } });
+  } else {
+    // Sin estimaciones — mostrar solo punto AC actual
+    new Chart(ctxE, { type: 'line', data: { labels: [d.ultimaActualizacion || 'Hoy'], datasets: [{ label: 'AC', data: [ac], borderColor: '#1B6BB0', pointRadius: 7, pointBackgroundColor: '#1B6BB0' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K' } } } } });
   }
 }
 
 function renderFlujoCaja(d) {
+  const flujo = METRICAS && METRICAS.flujo_caja ? METRICAS.flujo_caja : null;
+  const porMes = (flujo && flujo.porMes) ? flujo.porMes : [];
+  const proyeccion = (flujo && flujo.proyeccion) ? flujo.proyeccion : [];
+  const alertas = (flujo && flujo.alertas) ? flujo.alertas : [];
+  const mensajes = (flujo && flujo.mensajes) ? flujo.mensajes : [];
+
   const monto    = d.montoContrato || 0;
   const egresado = d.totalEgresado || 0;
   const ests     = d.estimaciones || [];
   const ultima   = ests[ests.length - 1];
-  const facturado = ultima ? ultima.acumActual : 0;
-  const flujoNeto = facturado - egresado;
-  const gap       = Math.abs(flujoNeto);
-  const costoGap  = gap * 0.11 / 12; // TIIE ~11% anual mensualizado
-  const pctEgr    = monto > 0 ? egresado / monto : 0;
-  const pctFact   = monto > 0 ? facturado / monto : 0;
+  const facturado = ultima ? (ultima.acumActual || 0) : 0;
+  const totalIngresos = porMes.reduce((s,m) => s + m.ingresos, 0);
+  const totalEgresos  = porMes.reduce((s,m) => s + m.egresos, 0);
+  const flujoNeto = totalIngresos - totalEgresos;
+  const gap = Math.abs(flujoNeto);
+  const costoGap = gap * 0.11 / 12;
+  const pctEgr = monto > 0 ? egresado/monto : 0;
+  const pctFact = monto > 0 ? facturado/monto : 0;
 
   // Banner
   const banner = document.getElementById('flujoStatusBanner');
   if (banner) {
-    if (flujoNeto >= 0) {
-      banner.style.background = '#f0fdf4';
-      banner.style.borderLeftColor = '#059669';
+    if (mensajes.length && !porMes.length) {
+      banner.style.background = '#f8fafc'; banner.style.borderLeftColor = '#94a3b8';
+      set('flujo-banner-icono', '📂');
+      const t = document.getElementById('flujo-banner-titulo'); if(t){t.textContent=mensajes[0];t.style.color='#64748b';}
+      const tx = document.getElementById('flujo-banner-texto'); if(tx){tx.textContent='Sube las estimaciones y ContPAQ para activar el análisis de flujo.';tx.style.color='#94a3b8';}
+    } else if (flujoNeto >= 0) {
+      banner.style.background = '#f0fdf4'; banner.style.borderLeftColor = '#059669';
       set('flujo-banner-icono', '✅');
-      const tituloEl = document.getElementById('flujo-banner-titulo');
-      if (tituloEl) { tituloEl.textContent = 'Flujo positivo'; tituloEl.style.color = '#065f46'; }
-      const textoEl = document.getElementById('flujo-banner-texto');
-      if (textoEl) { textoEl.textContent = `Waller tiene un flujo positivo de ${fmtK(flujoNeto)}. Lo facturado supera lo egresado.`; textoEl.style.color = '#166534'; }
+      const t = document.getElementById('flujo-banner-titulo'); if(t){t.textContent='Flujo positivo';t.style.color='#065f46';}
+      const tx = document.getElementById('flujo-banner-texto'); if(tx){tx.textContent=`Ingresos acum. ${fmtK(totalIngresos)} — Egresos acum. ${fmtK(totalEgresos)}. Flujo neto: ${fmtK(flujoNeto)}.`;tx.style.color='#166534';}
     } else {
-      banner.style.background = '#fef2f2';
-      banner.style.borderLeftColor = '#dc2626';
+      banner.style.background = '#fef2f2'; banner.style.borderLeftColor = '#dc2626';
       set('flujo-banner-icono', '🔴');
-      const tituloEl = document.getElementById('flujo-banner-titulo');
-      if (tituloEl) { tituloEl.textContent = 'Waller financiando al cliente'; tituloEl.style.color = '#991b1b'; }
-      const textoEl = document.getElementById('flujo-banner-texto');
-      if (textoEl) { textoEl.textContent = `El egreso acumulado (${fmtK(egresado)}) supera en ${fmtK(gap)} lo facturado (${fmtK(facturado)}). Waller está adelantando capital propio.`; textoEl.style.color = '#7f1d1d'; }
+      const t = document.getElementById('flujo-banner-titulo'); if(t){t.textContent='Waller financiando al cliente';t.style.color='#991b1b';}
+      const tx = document.getElementById('flujo-banner-texto'); if(tx){tx.textContent=`Egresos (${fmtK(totalEgresos)}) superan ingresos (${fmtK(totalIngresos)}) en ${fmtK(gap)}. Capital propio comprometido.`;tx.style.color='#7f1d1d';}
     }
   }
 
   set('flujo-kpi-neto', fmtK(flujoNeto));
-  set('flujo-kpi-neto-sub', 'Facturado − Egresado · ' + (flujoNeto >= 0 ? 'Positivo ✅' : 'Déficit ⚠'));
+  set('flujo-kpi-neto-sub', 'Ingresos − Egresos acumulados · ' + (flujoNeto >= 0 ? 'Positivo ✅' : 'Déficit ⚠'));
   set('flujo-kpi-egresado', fmtK(egresado));
-  set('flujo-kpi-egresado-sub', 'ContPAQ · ' + (pctEgr * 100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
+  set('flujo-kpi-egresado-sub', 'ContPAQ · ' + (pctEgr*100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
   set('flujo-kpi-facturado', fmtK(facturado));
-  set('flujo-kpi-facturado-sub', ests.length + ' estimación(es) · ' + (pctFact * 100).toFixed(1) + '% del contrato');
+  set('flujo-kpi-facturado-sub', ests.length + ' estimación(es) · ' + (pctFact*100).toFixed(1) + '% del contrato');
   set('flujo-kpi-costo-gap', flujoNeto < 0 ? fmt(Math.round(costoGap)) + '/mes' : '$0');
   set('flujo-kpi-costo-gap-sub', flujoNeto < 0 ? `${fmtK(gap)} × TIIE ~11% anual / 12` : 'Sin costo de financiamiento');
+
+  // Tabla detalle por mes
+  const tbodyFlujo = document.getElementById('tbody-flujo-detalle');
+  if (tbodyFlujo) {
+    if (!porMes.length) {
+      tbodyFlujo.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">Sin datos de flujo. Sube estimaciones para activar.</td></tr>';
+    } else {
+      tbodyFlujo.innerHTML = porMes.map(m => {
+        const neto = m.flujo_neto;
+        const cls = neto >= 0 ? 'verde' : 'rojo';
+        return `<tr>
+          <td>${m.mes}</td>
+          <td class="num" style="color:#059669">${fmtK(m.ingresos)}</td>
+          <td class="num" style="color:#dc2626">${fmtK(m.egresos)}</td>
+          <td class="num" style="font-weight:600;color:${neto>=0?'#059669':'#dc2626'}">${fmtK(neto)}</td>
+          <td><span class="pill ${cls}">${neto>=0?'Positivo':'Déficit'}</span></td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // Alertas
+  const alertasDiv = document.getElementById('flujo-alertas');
+  if (alertasDiv) {
+    if (!alertas.length && !mensajes.length) {
+      alertasDiv.innerHTML = '<p style="color:#94a3b8;font-size:13px;padding:1rem">Sin alertas.</p>';
+    } else {
+      const items = [...alertas.map(a=>`<p style="color:#dc2626;font-size:13px;padding:6px 0"><i class="ti ti-alert-triangle"></i> ${a}</p>`),
+                     ...mensajes.map(m=>`<p style="color:#d97706;font-size:13px;padding:6px 0"><i class="ti ti-info-circle"></i> ${m}</p>`)];
+      alertasDiv.innerHTML = items.join('');
+    }
+  }
+
+  // Gráfica flujo comparativo
+  destroyChart('flujo-comparativo');
+  const ctxF = document.getElementById('flujo-comparativo');
+  if (ctxF && porMes.length) {
+    const labels = porMes.map(m => m.mes);
+    const pLabels = proyeccion.map(p => p.mes + ' (proy)');
+    const allLabels = [...labels, ...pLabels];
+    const ingrData = [...porMes.map(m => m.ingresos), ...proyeccion.map(p => p.ingreso)];
+    const egrData  = [...porMes.map(m => m.egresos),  ...proyeccion.map(() => null)];
+    new Chart(ctxF, {
+      type: 'bar',
+      data: {
+        labels: allLabels,
+        datasets: [
+          { label: 'Ingresos estimaciones', data: ingrData, backgroundColor: ingrData.map((_,i) => i < labels.length ? 'rgba(5,150,105,0.75)' : 'rgba(5,150,105,0.3)'), borderRadius: 4 },
+          { label: 'Egresos (ContPAQ)', data: egrData, backgroundColor: 'rgba(220,38,38,0.65)', borderRadius: 4 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K' } }, x: { grid: { display: false } } } }
+    });
+  } else if (ctxF && !porMes.length) {
+    new Chart(ctxF, { type:'bar', data:{ labels:['Sin datos'], datasets:[{label:'Flujo',data:[0],backgroundColor:'#e2e8f0'}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} } });
+  }
 }
 
 function renderContrato(d) {
@@ -973,35 +1079,34 @@ function renderVariaciones(d) {
   const alertasDiv = document.getElementById('variaciones-alertas');
   if (!tbody) return;
 
-  const partidas = d.partidasDetalle || [];
-  const cotizacion = d.cotizacion;
+  const vars = METRICAS && METRICAS.variaciones ? METRICAS.variaciones : [];
 
-  if (!partidas.length) {
-    const msg = (!cotizacion || !cotizacion.secciones?.length)
-      ? 'Sin cotización cargada — sube el archivo en Centro de Carga'
-      : 'Sin datos de variaciones. Carga el ContPAQ para activar este módulo.';
+  if (!vars.length) {
+    const tieneCotizacion = !!(d.cotizacion && (d.cotizacion.totalPresupuesto > 0 || (d.cotizacion.resumenCostos && Object.keys(d.cotizacion.resumenCostos).length)));
+    const tieneContpaq = !!(d.totalEgresado > 0);
+    let msg;
+    if (!tieneContpaq && !tieneCotizacion) msg = 'Carga ContPAQ y cotización para activar las variaciones';
+    else if (!tieneContpaq) msg = 'Sin datos ContPAQ — sube el libro auxiliar en Centro de Carga';
+    else msg = 'Sin cotización cargada — sube el archivo en Centro de Carga';
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:1.5rem">${msg}</td></tr>`;
     if (alertasDiv) alertasDiv.innerHTML = '';
     return;
   }
 
+  const estadoLabel = { ok:'OK', alerta:'Alerta', critico:'Sobrecosto', sin_presupuesto:'Sin presup.', sin_datos:'Sin datos' };
+  const estadoCls   = { ok:'verde', alerta:'amarillo', critico:'rojo', sin_presupuesto:'morado', sin_datos:'morado' };
   const alertas = [];
-  tbody.innerHTML = partidas.map(p => {
-    const presup   = p.presupuesto || 0;
-    const ejercido = p.ejercido || p.total || 0;
-    const variacion = presup > 0 ? ejercido - presup : null;
-    const pctEjec   = presup > 0 ? ejercido / presup * 100 : null;
-    const estado    = pctEjec === null ? 'Sin presup.' : pctEjec > 100 ? 'Sobrecosto' : pctEjec > 80 ? 'En riesgo' : 'OK';
-    const cls       = estado === 'Sobrecosto' ? 'rojo' : estado === 'En riesgo' ? 'amarillo' : 'verde';
-    if (estado === 'Sobrecosto') alertas.push(p.nombre || p.clave);
+
+  tbody.innerHTML = vars.map(v => {
+    const cls = estadoCls[v.estado] || 'morado';
+    if (v.estado === 'critico') alertas.push(v.nombre);
     return `<tr>
-      <td style="font-family:monospace;font-size:12px">${p.clave || '—'}</td>
-      <td>${p.nombre || p.clave}</td>
-      <td class="num">${presup ? fmt(presup) : '—'}</td>
-      <td class="num" style="font-weight:500">${fmt(ejercido)}</td>
-      <td class="num" style="color:${variacion===null?'#94a3b8':variacion>0?'#dc2626':'#059669'}">${variacion!==null?(variacion>0?'+':'')+fmt(variacion):'—'}</td>
-      <td class="num">${pctEjec!==null?pctEjec.toFixed(1)+'%':'—'}</td>
-      <td><span class="pill ${cls}">${estado}</span></td>
+      <td>${v.nombre}</td>
+      <td class="num">${v.presupuestado > 0 ? fmt(v.presupuestado) : '—'}</td>
+      <td class="num" style="font-weight:500">${fmt(v.ejercido)}</td>
+      <td class="num" style="color:${v.variacion > 0 ? '#dc2626' : v.variacion < 0 ? '#059669' : '#94a3b8'}">${v.variacion !== null ? (v.variacion > 0 ? '+' : '') + fmt(v.variacion) : '—'}</td>
+      <td class="num">${v.pct !== null ? v.pct.toFixed(1) + '%' : '—'}</td>
+      <td><span class="pill ${cls}">${estadoLabel[v.estado] || v.estado}</span></td>
     </tr>`;
   }).join('');
 
@@ -1009,6 +1114,24 @@ function renderVariaciones(d) {
     alertasDiv.innerHTML = alertas.length
       ? `<div class="diag rojo" style="margin-bottom:1.25rem"><h4>⚠️ Sobrecosto en ${alertas.length} partida(s)</h4><p>${alertas.join(', ')}</p></div>`
       : '';
+  }
+
+  // Gráfica de barras con presupuestado vs ejercido
+  destroyChart('bar-variaciones');
+  const top = vars.filter(v => v.ejercido > 0 || v.presupuestado > 0).slice(0, 8);
+  const ctxV = document.getElementById('bar-variaciones');
+  if (ctxV && top.length) {
+    new Chart(ctxV, {
+      type: 'bar',
+      data: {
+        labels: top.map(v => v.nombre),
+        datasets: [
+          { label: 'Presupuestado', data: top.map(v => v.presupuestado), backgroundColor: '#e2e8f0', borderRadius: 4 },
+          { label: 'Ejercido', data: top.map(v => v.ejercido), backgroundColor: top.map(v => v.estado === 'critico' ? '#fca5a5' : v.estado === 'alerta' ? '#fcd34d' : '#60a5fa'), borderRadius: 4 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => '$' + Math.round(v/1000) + 'K' } } } }
+    });
   }
 }
 
@@ -1057,6 +1180,59 @@ function renderCronograma(d) {
       <td><span class="pill morado">Sin avance real</span></td>
     </tr>`;
   }).join('');
+}
+
+// ─── renderNiveles ─────────────────────────────────────────────────────────
+function renderNiveles() {
+  const tbody = document.getElementById('tbody-niveles-detalle');
+  if (!tbody) return;
+
+  const porNivel = METRICAS && METRICAS.por_nivel ? METRICAS.por_nivel : [];
+  const msg = METRICAS ? METRICAS.por_nivel_msg : 'Cargando...';
+
+  if (!porNivel.length) {
+    const texto = msg || 'Sin datos de niveles. Sube el cronograma.';
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">${texto}</td></tr>`;
+    destroyChart('bar-niveles');
+    return;
+  }
+
+  const estadoCls = { completo: 'verde', en_progreso: 'amarillo', pendiente: 'morado' };
+  const estadoLabel = { completo: 'Completo', en_progreso: 'En progreso', pendiente: 'Pendiente' };
+
+  tbody.innerHTML = porNivel.map(n => `<tr>
+    <td style="font-weight:600">${n.nivel}</td>
+    <td class="num">${Math.round(n.m2_programado)} m²</td>
+    <td class="num">${Math.round(n.m2_instalado)} m²</td>
+    <td class="num">${n.pct_avance.toFixed(1)}%</td>
+    <td class="num">${Math.round(n.saldo)} m²</td>
+    <td><span class="pill ${estadoCls[n.estado] || 'morado'}">${estadoLabel[n.estado] || n.estado}</span></td>
+  </tr>`).join('');
+
+  if (msg) {
+    const infoRow = `<tr><td colspan="5" style="font-size:12px;color:#d97706;padding:8px 12px;background:#fffbeb"><i class="ti ti-info-circle"></i> ${msg}</td></tr>`;
+    tbody.innerHTML += infoRow;
+  }
+
+  destroyChart('bar-niveles');
+  const ctx = document.getElementById('bar-niveles');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: porNivel.map(n => n.nivel),
+        datasets: [
+          { label: 'Programado', data: porNivel.map(n => n.m2_programado), backgroundColor: '#e2e8f0', borderRadius: 4 },
+          { label: 'Instalado', data: porNivel.map(n => n.m2_instalado), backgroundColor: '#1B6BB0', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: { y: { title: { display: true, text: 'M²' } } }
+      }
+    });
+  }
 }
 
 // ─── renderCambios ─────────────────────────────────────────────────────────
@@ -1218,15 +1394,17 @@ function switchTab(id){
   if(el)el.classList.add('active');
   setTimeout(()=>{
     initCharts();
-    if(id==='flujocaja')  initFlujoChart();
-    if(id==='bitacora')   initBitacora();
+    if(id==='bitacora') initBitacora();
     if(OBRA_DATA){
-      if(id==='cronograma')   renderCronograma(OBRA_DATA);
-      if(id==='cambios')      renderCambios(OBRA_DATA);
-      if(id==='variaciones')  renderVariaciones(OBRA_DATA);
-      if(id==='contrato')     renderContrato(OBRA_DATA);
-      if(id==='evm')          renderEVM(OBRA_DATA);
-      if(id==='estimaciones') renderTablaEstimaciones(OBRA_DATA.estimaciones||[]);
+      if(id==='cronograma')    renderCronograma(OBRA_DATA);
+      if(id==='cambios')       renderCambios(OBRA_DATA);
+      if(id==='variaciones')   renderVariaciones(OBRA_DATA);
+      if(id==='contrato')      renderContrato(OBRA_DATA);
+      if(id==='evm')           renderEVM(OBRA_DATA);
+      if(id==='estimaciones')  renderTablaEstimaciones(OBRA_DATA.estimaciones||[]);
+      if(id==='niveles')       renderNiveles();
+      if(id==='flujocaja')     renderFlujoCaja(OBRA_DATA);
+      if(id==='edoresultados') renderEdoResultados(OBRA_DATA);
     }
   },100);
 }
@@ -1355,63 +1533,66 @@ function doLogin(){const u=document.getElementById('l-user').value,p=document.ge
 
 // ─── Estado de Resultados ──────────────────────────────────────────────────
 function renderEdoResultados(data){
-  const fmt = v => '$' + Math.round(v).toLocaleString('es-MX');
+  const edo = METRICAS && METRICAS.edo_resultados ? METRICAS.edo_resultados : null;
+  const fmtV = v => v !== null && v !== undefined ? ('$' + Math.round(v).toLocaleString('es-MX')) : '—';
 
   const contrato  = data.montoContrato || 0;
   const egresado  = data.totalEgresado || 0;
   const ests      = data.estimaciones || [];
-  const ultimaEst = ests[ests.length - 1];
+  const ultimaEst = ests[ests.length-1];
   const facturado = ultimaEst ? (ultimaEst.acumActual || 0) : 0;
   const retencion = ests.reduce((s,e) => s + (e.retencionEsta||0), 0);
-  const m2Acum    = ultimaEst ? (ultimaEst.m2Acum || 0) : 0;
-  const totalM2   = (data.cronograma && data.cronograma.totalM2) || 0;
-  const avancePct = totalM2 > 0 ? (m2Acum / totalM2 * 100) : 0;
+  const porFacturar = contrato - facturado;
 
-  const ingresos       = contrato * (avancePct / 100);
-  const pendiente      = contrato - ingresos;
-  const costoCompletar = contrato - egresado;
-  const utilidadBruta  = ingresos - egresado;
-  const margenPct      = ingresos > 0 ? (utilidadBruta / ingresos * 100) : 0;
-  const utilidadNeta   = utilidadBruta - retencion;
-  const porFacturar    = contrato - facturado;
+  const ingreso_reconocido = edo ? edo.ingreso_reconocido : (ultimaEst ? (ultimaEst.acumActual||null) : null);
+  const costo_total   = edo ? edo.costo_total : egresado;
+  const utilidad_bruta = ingreso_reconocido !== null ? ingreso_reconocido - costo_total : null;
+  const margen_pct    = (utilidad_bruta !== null && ingreso_reconocido > 0) ? (utilidad_bruta/ingreso_reconocido*100) : null;
+  const costoCompletar = contrato - costo_total;
+  const pendiente = ingreso_reconocido !== null ? contrato - ingreso_reconocido : null;
+  const utilidadNeta = utilidad_bruta !== null ? utilidad_bruta - retencion : null;
+  const avancePct = edo ? edo.avance_fisico_pct : null;
 
   set('edo-nombre-obra', data.nombre || ('CC ' + data.cc));
-  set('edo-r-contrato',       fmt(contrato));
-  set('edo-r-ingresos',       fmt(ingresos));
-  set('edo-r-avance-pct',     `(${avancePct.toFixed(1)}% avance físico)`);
-  set('edo-r-pendiente',      fmt(pendiente));
-  set('edo-r-costos',         fmt(egresado));
-  set('edo-r-costo-completar',fmt(costoCompletar));
-  set('edo-r-utilidad',       fmt(utilidadBruta));
-  set('edo-r-margen-pct',     margenPct.toFixed(1) + '%');
-  set('edo-r-retencion',      fmt(retencion));
-  set('edo-r-utilidad-neta',  fmt(utilidadNeta));
-  set('edo-r-facturado',      fmt(facturado));
-  set('edo-r-por-facturar',   fmt(porFacturar));
+  set('edo-r-contrato', fmtV(contrato));
+  set('edo-r-ingresos', ingreso_reconocido !== null ? fmtV(ingreso_reconocido) : '— Sin estimaciones');
+  set('edo-r-avance-pct', avancePct !== null ? `(${avancePct.toFixed(1)}% avance físico)` : '(carga estimaciones)');
+  set('edo-r-pendiente', pendiente !== null ? fmtV(pendiente) : '—');
+  set('edo-r-costos', fmtV(costo_total));
+  set('edo-r-costo-completar', fmtV(costoCompletar));
+  set('edo-r-utilidad', utilidad_bruta !== null ? fmtV(utilidad_bruta) : '—');
+  set('edo-r-margen-pct', margen_pct !== null ? margen_pct.toFixed(1) + '%' : '—');
+  set('edo-r-retencion', fmtV(retencion));
+  set('edo-r-utilidad-neta', utilidadNeta !== null ? fmtV(utilidadNeta) : '—');
+  set('edo-r-facturado', fmtV(facturado));
+  set('edo-r-por-facturar', fmtV(porFacturar));
 
-  // Color utilidad
   const elUtil = document.getElementById('edo-r-utilidad');
-  if(elUtil) elUtil.style.color = utilidadBruta >= 0 ? '#059669' : '#dc2626';
+  if (elUtil && utilidad_bruta !== null) elUtil.style.color = utilidad_bruta >= 0 ? '#059669' : '#dc2626';
   const elMrg = document.getElementById('edo-r-margen-pct');
-  if(elMrg) elMrg.style.color = margenPct >= 15 ? '#059669' : margenPct >= 5 ? '#d97706' : '#dc2626';
+  if (elMrg && margen_pct !== null) elMrg.style.color = margen_pct >= 15 ? '#059669' : margen_pct >= 5 ? '#d97706' : '#dc2626';
 
-  // Banner
   const banner    = document.getElementById('edoBanner');
   const bannerTit = document.getElementById('edoBannerTitulo');
   const bannerTxt = document.getElementById('edoBannerTexto');
-  const bannerIcon= document.getElementById('edoBannerIcon');
-  if(utilidadBruta >= 0){
+  const bannerIcon = document.getElementById('edoBannerIcon');
+  if (!banner) return;
+
+  if (ingreso_reconocido === null) {
+    banner.style.background='#f8fafc'; banner.style.borderLeftColor='#94a3b8';
+    if(bannerTit){bannerTit.textContent='Carga estimaciones para activar el Estado de Resultados';bannerTit.style.color='#64748b';}
+    if(bannerTxt){bannerTxt.textContent='El ingreso reconocido se determina a partir del acumulado de la última estimación (no del avance % × contrato).';bannerTxt.style.color='#94a3b8';}
+    if(bannerIcon) bannerIcon.textContent='📂';
+  } else if (utilidad_bruta !== null && utilidad_bruta >= 0) {
     banner.style.background='#f0fdf4'; banner.style.borderLeftColor='#059669';
-    bannerTit.style.color='#065f46';   bannerTxt.style.color='#047857';
-    bannerIcon.textContent = '✅';
-    bannerTit.textContent = `Obra rentable — margen bruto ${margenPct.toFixed(1)}%`;
-    bannerTxt.textContent = `Ingresos reconocidos ${fmt(ingresos)} vs costos incurridos ${fmt(egresado)}. Utilidad bruta: ${fmt(utilidadBruta)}.`;
+    if(bannerTit){bannerTit.textContent=`Obra rentable — margen bruto ${margen_pct !== null ? margen_pct.toFixed(1)+'%' : '—'}`;bannerTit.style.color='#065f46';}
+    if(bannerTxt){bannerTxt.textContent=`Ingresos reconocidos ${fmtV(ingreso_reconocido)} vs costos incurridos ${fmtV(costo_total)}. Utilidad bruta: ${fmtV(utilidad_bruta)}.`;bannerTxt.style.color='#047857';}
+    if(bannerIcon) bannerIcon.textContent='✅';
   } else {
     banner.style.background='#fef2f2'; banner.style.borderLeftColor='#dc2626';
-    bannerTit.style.color='#991b1b';   bannerTxt.style.color='#7f1d1d';
-    bannerIcon.textContent = '🔴';
-    bannerTit.textContent = 'Alerta: costos superan ingresos reconocidos';
-    bannerTxt.textContent = `Los costos incurridos (${fmt(egresado)}) superan los ingresos por avance (${fmt(ingresos)}). Déficit: ${fmt(Math.abs(utilidadBruta))}. Revisar productividad.`;
+    if(bannerTit){bannerTit.textContent='Alerta: costos superan ingresos reconocidos';bannerTit.style.color='#991b1b';}
+    if(bannerTxt){bannerTxt.textContent=`Costos incurridos (${fmtV(costo_total)}) superan ingresos (${fmtV(ingreso_reconocido)}). Déficit: ${utilidad_bruta !== null ? fmtV(Math.abs(utilidad_bruta)) : '—'}. Revisar productividad.`;bannerTxt.style.color='#7f1d1d';}
+    if(bannerIcon) bannerIcon.textContent='🔴';
   }
 }
 

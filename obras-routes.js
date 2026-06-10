@@ -968,6 +968,248 @@ function aplicarPdfAlProyecto(proyecto, tipo, extraido) {
   }
 }
 
+// ── Motor de cálculo de métricas ─────────────────────────────────────────────
+function calcularMetricas(proyecto) {
+  const p = proyecto || {};
+  const now = new Date();
+  const toDate = s => { try { if (!s) return null; const d = new Date(s); return isFinite(d.getTime()) ? d : null; } catch(e) { return null; } };
+  const difDias = (a, b) => { if (!a || !b) return null; const d = Math.round((b - a) / 86400000); return isFinite(d) ? d : null; };
+
+  // ── A) VARIACIONES ────────────────────────────────────────────────────────
+  const partidas = p.partidas || {};
+  const cot = p.cotizacion || {};
+  const resumen = cot.resumenCostos || {};
+
+  const presupuestoMap = {
+    mano_de_obra: resumen.manoDeObra || 0,
+    fletes: resumen.fletes || 0,
+    indirectos_campo: resumen.indirectosCampo || 0,
+    indirectos_central: resumen.indirectosOficina || 0,
+    muros_panel: cot.totalPaneles || (cot.secciones||[]).reduce((s,sec) => s + (sec.totalImporte||0), 0),
+    complementarios: cot.totalComplementarios || (cot.complementarios||[]).reduce((s,c) => s + (c.importe||0), 0),
+    iva_no_acreditable: 0,
+    herramienta_epp: 0,
+  };
+
+  const herramientaEjercido = (partidas.herramienta_mano||0) + (partidas.herramienta_corte||0)
+    + (partidas.epp||0) + (partidas.renta_andamios||0);
+
+  const GRUPOS_VAR = [
+    { clave:'muros_panel', nombre:'Muros / Panel' },
+    { clave:'mano_de_obra', nombre:'Mano de obra' },
+    { clave:'fletes', nombre:'Fletes' },
+    { clave:'complementarios', nombre:'Complementarios' },
+    { clave:'indirectos_campo', nombre:'Indirectos de campo' },
+    { clave:'indirectos_central', nombre:'Indirectos of. central' },
+    { clave:'herramienta_epp', nombre:'Herramienta y EPP' },
+    { clave:'iva_no_acreditable', nombre:'IVA no acreditable' },
+  ];
+
+  const variaciones = GRUPOS_VAR.map(g => {
+    const ejercido = g.clave === 'herramienta_epp' ? herramientaEjercido : (partidas[g.clave]||0);
+    const presupuestado = presupuestoMap[g.clave] || 0;
+    const variacion = ejercido - presupuestado;
+    const pct = presupuestado > 0 ? (variacion/presupuestado)*100 : null;
+    let estado;
+    if (presupuestado === 0) estado = ejercido > 0 ? 'sin_presupuesto' : 'sin_datos';
+    else if (pct <= 5) estado = 'ok';
+    else if (pct <= 20) estado = 'alerta';
+    else estado = 'critico';
+    return { clave: g.clave, nombre: g.nombre, presupuestado, ejercido, variacion, pct, estado };
+  }).filter(g => g.ejercido > 0 || g.presupuestado > 0);
+
+  // ── B) EVM ────────────────────────────────────────────────────────────────
+  const BAC = p.montoContrato || 0;
+  const ests = p.estimaciones || [];
+  const ultimaEst = ests.length > 0 ? ests[ests.length-1] : null;
+  const m2Acum = ultimaEst ? (ultimaEst.m2Acum || 0) : 0;
+  const cron = p.cronograma || {};
+  const totalM2 = cron.totalM2 || 0;
+
+  const EV = (totalM2 > 0 && m2Acum > 0 && BAC > 0) ? (m2Acum/totalM2)*BAC : 0;
+  const AC = p.totalEgresado || 0;
+
+  const fechaInicio = p.fechaInicio || cron.fechaInicio || null;
+  const fechaFin = p.fechaFin || null;
+  let PV = null;
+  if (fechaInicio && fechaFin) {
+    const dInicio = toDate(fechaInicio);
+    const dFin = toDate(fechaFin);
+    if (dInicio && dFin) {
+      const dTotal = difDias(dInicio, dFin);
+      const dTrans = Math.min(Math.max(difDias(dInicio, now) || 0, 0), dTotal || 0);
+      if (dTotal > 0) PV = (dTrans / dTotal) * BAC;
+    }
+  }
+
+  const CPI = (AC > 0 && EV > 0) ? EV/AC : null;
+  const SPI = (PV !== null && PV > 0 && EV > 0) ? EV/PV : null;
+  const CV = EV - AC;
+  const SV = PV !== null ? EV - PV : null;
+  const EAC_optimista = BAC > 0 ? AC + (BAC - EV) : null;
+  const EAC_probable = (CPI !== null && CPI > 0) ? BAC/CPI : null;
+  const EAC_pesimista = (CPI !== null && SPI !== null && CPI > 0 && SPI > 0) ? AC + (BAC-EV)/(CPI*SPI) : null;
+  const ETC = EAC_probable ? EAC_probable - AC : null;
+  const VAC = EAC_probable ? BAC - EAC_probable : null;
+  const TCPI = (BAC - AC) > 0 ? (BAC - EV) / (BAC - AC) : null;
+
+  let acAcumCurva = 0;
+  const curva = ests.map(e => {
+    acAcumCurva += (e.estaEstimacion || 0);
+    let pvPunto = null;
+    if (fechaInicio && fechaFin && e.periodoHasta) {
+      const dInicio = toDate(fechaInicio);
+      const dFin = toDate(fechaFin);
+      const dPunto = toDate(e.periodoHasta);
+      if (dInicio && dFin && dPunto) {
+        const dTotal = difDias(dInicio, dFin);
+        const dTrans = Math.min(Math.max(difDias(dInicio, dPunto) || 0, 0), dTotal || 0);
+        pvPunto = dTotal > 0 ? (dTrans/dTotal)*BAC : null;
+      }
+    }
+    return { fecha: e.periodoHasta || null, numero: e.numero, ev: e.acumActual || 0, ac: acAcumCurva, pv: pvPunto };
+  });
+
+  // ── C) GANTT ──────────────────────────────────────────────────────────────
+  const tieneGantt = !!(fechaInicio && fechaFin && cron.totalSemanas);
+  let ganttSemanas = [];
+  if (tieneGantt) {
+    const dInicio = toDate(fechaInicio);
+    if (dInicio) {
+      const ps = cron.programaSemanal || {};
+      for (let s = 1; s <= cron.totalSemanas; s++) {
+        const fechaSem = new Date(dInicio.getTime() + (s-1)*7*86400000);
+        const pvM2 = Object.values(ps).reduce((sum, nv) => sum + (nv['S'+s]||0), 0);
+        ganttSemanas.push({ semana: s, fecha: fechaSem.toISOString().slice(0,10), pvM2 });
+      }
+    }
+  }
+
+  // ── D) FLUJO DE CAJA ─────────────────────────────────────────────────────
+  const flujoCaja = { porMes: [], proyeccion: [], alertas: [], mensajes: [] };
+
+  if (!ests.length) {
+    flujoCaja.mensajes.push('Carga estimaciones para ver el flujo de caja');
+  } else {
+    const porMes = {};
+    ests.forEach(e => {
+      const mes = (e.periodoHasta || e.periodoDesde || '').slice(0,7) || 'sin-fecha';
+      if (!porMes[mes]) porMes[mes] = { mes, ingresos: 0, egresos: 0, estimaciones: [] };
+      porMes[mes].ingresos += (e.importePagar || 0);
+      porMes[mes].estimaciones.push(e.numero);
+    });
+
+    const meses = Object.keys(porMes);
+    const totalIngresos = Object.values(porMes).reduce((s,m) => s + m.ingresos, 0);
+    if (AC > 0) {
+      if (meses[0] !== 'sin-fecha' && totalIngresos > 0) {
+        Object.values(porMes).forEach(m => { m.egresos = (m.ingresos / totalIngresos) * AC; });
+      } else {
+        const ultimo = meses[meses.length-1];
+        if (ultimo) porMes[ultimo].egresos = AC;
+      }
+    }
+
+    let flujoAcum = 0;
+    flujoCaja.porMes = Object.entries(porMes)
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([mes, m]) => {
+        const flujo_neto = m.ingresos - m.egresos;
+        flujoAcum += flujo_neto;
+        return { mes, ingresos: m.ingresos, egresos: m.egresos, flujo_neto, flujo_acumulado: flujoAcum };
+      });
+
+    if (!fechaFin) {
+      flujoCaja.mensajes.push('Sube el contrato PDF para ver la proyección');
+    } else if (ultimaEst && (ultimaEst.porEjercer || 0) > 0) {
+      const dFin = toDate(fechaFin);
+      if (dFin && dFin > now) {
+        const mesesRestantes = Math.max(1, Math.ceil((dFin - now) / (30*86400000)));
+        const ingresoPorMes = ultimaEst.porEjercer / mesesRestantes;
+        for (let i = 0; i < mesesRestantes; i++) {
+          const d = new Date(now.getTime() + i*30*86400000);
+          flujoCaja.proyeccion.push({ mes: d.toISOString().slice(0,7), ingreso: ingresoPorMes });
+        }
+      }
+    }
+
+    if (flujoAcum < 0) flujoCaja.alertas.push('Waller está financiando al cliente');
+  }
+
+  // ── E) ESTADO DE RESULTADOS ───────────────────────────────────────────────
+  const ingreso_reconocido = ultimaEst ? (ultimaEst.acumActual || null) : null;
+  const costo_directo = (partidas.muros_panel||0) + (partidas.mano_de_obra||0) + (partidas.fletes||0);
+  const costo_indirecto = Object.entries(partidas)
+    .filter(([k]) => !['muros_panel','mano_de_obra','fletes'].includes(k))
+    .reduce((s,[,v]) => s + (v||0), 0);
+  const costo_total = costo_directo + costo_indirecto;
+  const utilidad_bruta = ingreso_reconocido !== null ? ingreso_reconocido - costo_total : null;
+  const margen_bruto_pct = (utilidad_bruta !== null && ingreso_reconocido > 0)
+    ? (utilidad_bruta/ingreso_reconocido)*100 : null;
+  const margen_presupuestado_pct = (resumen.utilidadReserva && resumen.utilidadReserva > 1)
+    ? resumen.utilidadReserva : null;
+  const desviacion_margen = (margen_bruto_pct !== null && margen_presupuestado_pct !== null)
+    ? margen_bruto_pct - margen_presupuestado_pct : null;
+
+  // ── F) POR NIVEL ─────────────────────────────────────────────────────────
+  const m2PorNivel = cron.m2PorNivel || {};
+  const avancePorNivel = p.avancePorNivel || p._m2InstalPorNivel || {};
+  let por_nivel = [];
+  let por_nivel_msg = null;
+
+  if (!Object.keys(m2PorNivel).length) {
+    por_nivel_msg = 'Sube el cronograma en Centro de Carga';
+  } else {
+    por_nivel = Object.entries(m2PorNivel).map(([nivel, m2_programado]) => {
+      const m2_instalado = avancePorNivel[nivel] || 0;
+      const pct_avance = m2_programado > 0 ? (m2_instalado/m2_programado)*100 : 0;
+      const saldo = m2_programado - m2_instalado;
+      const estado = pct_avance >= 100 ? 'completo' : pct_avance > 0 ? 'en_progreso' : 'pendiente';
+      return { nivel, m2_programado, m2_instalado, pct_avance, saldo, estado };
+    });
+    if (!Object.keys(avancePorNivel).length) por_nivel_msg = 'Conecta avance diario para ver instalado';
+  }
+
+  // ── G) RESUMEN EJECUTIVO ──────────────────────────────────────────────────
+  const avance_fisico_pct = (totalM2 > 0 && m2Acum > 0) ? (m2Acum/totalM2)*100 : null;
+  const avance_programado_pct = PV !== null && BAC > 0 ? (PV/BAC)*100 : null;
+  const alerta_costo = CPI !== null ? (CPI < 0.9 ? 'critico' : CPI < 1 ? 'atencion' : 'ok') : null;
+  const alerta_tiempo = SPI !== null ? (SPI < 0.9 ? 'critico' : SPI < 1 ? 'atencion' : 'ok') : null;
+
+  let dias_retraso = null;
+  if (fechaFin && ests.length > 0 && ultimaEst && ultimaEst.periodoHasta) {
+    const dFin = toDate(fechaFin);
+    const dUltima = toDate(ultimaEst.periodoHasta);
+    if (dFin && dUltima && dUltima > dFin) dias_retraso = difDias(dFin, dUltima);
+  }
+
+  // ── H) CAMBIOS ────────────────────────────────────────────────────────────
+  const cambios = p.cambios || [];
+  const extras_aprobados = cambios
+    .filter(c => c.estado === 'aprobado' && c.tipo === 'extra')
+    .reduce((s,c) => s + (c.monto||0), 0);
+  const deductivos_aprobados = cambios
+    .filter(c => c.estado === 'aprobado' && c.tipo === 'deductivo')
+    .reduce((s,c) => s + (c.monto||0), 0);
+  const presupuesto_modificado = (BAC||0) + extras_aprobados - deductivos_aprobados;
+  const pct_cambios = BAC > 0 ? (extras_aprobados/BAC)*100 : null;
+
+  return {
+    variaciones,
+    evm: { BAC, EV, AC, PV, CPI, SPI, CV, SV, EAC_optimista, EAC_probable, EAC_pesimista, ETC, VAC, TCPI, curva },
+    gantt: { tieneGantt, semanas: ganttSemanas, totalSemanas: cron.totalSemanas || 0, totalM2, fechaInicio, fechaFin },
+    flujo_caja: flujoCaja,
+    edo_resultados: { ingreso_reconocido, costo_directo, costo_indirecto, costo_total, utilidad_bruta, margen_bruto_pct, margen_presupuestado_pct, desviacion_margen },
+    por_nivel, por_nivel_msg,
+    resumen: {
+      avance_fisico_pct, avance_programado_pct, costo_ejecutado: AC, presupuesto: BAC,
+      margen_proyectado_pct: VAC !== null && BAC > 0 ? (VAC/BAC)*100 : null,
+      alerta_costo, alerta_tiempo, dias_retraso, ultimo_corte: p.ultimaActualizacion || null
+    },
+    cambios_resumen: { cambios, extras_aprobados, deductivos_aprobados, presupuesto_modificado, pct_cambios }
+  };
+}
+
 module.exports = function(app) {
 
   app.get('/api/proyectos', (req, res) => {
@@ -1067,32 +1309,13 @@ module.exports = function(app) {
   app.get('/api/proyectos/:cc/variaciones', (req, res) => {
     const p = leerProyecto(req.params.cc);
     if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
-    const partidas = (p.partidasDetalle || []).map(part => {
-      const presupuestado = part.presupuesto || 0;
-      const ejercido = part.ejercido || part.total || 0;
-      const variacion = presupuestado > 0 ? ejercido - presupuestado : null;
-      const pctEjecutado = presupuestado > 0 ? (ejercido / presupuestado * 100) : null;
-      return { ...part, presupuestado, ejercido, variacion, pctEjecutado };
-    });
-    res.json(partidas);
+    res.json(calcularMetricas(p).variaciones);
   });
 
   app.get('/api/proyectos/:cc/flujo-caja', (req, res) => {
     const p = leerProyecto(req.params.cc);
     if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
-    const ests = p.estimaciones || [];
-    const porMes = {};
-    ests.forEach(e => {
-      const mes = (e.periodoHasta || e.periodoDesde || '').slice(0, 7) || 'sin-fecha';
-      if (!porMes[mes]) porMes[mes] = { mes, ingresos: 0, estimaciones: [] };
-      porMes[mes].ingresos += e.estaEstimacion || 0;
-      porMes[mes].estimaciones.push(e.numero);
-    });
-    res.json({
-      porMes: Object.values(porMes),
-      totalEgresado: p.totalEgresado || 0,
-      ultimaActualizacion: p.ultimaActualizacion || null,
-    });
+    res.json(calcularMetricas(p).flujo_caja);
   });
 
   app.get('/api/proyectos/:cc/bitacora', (req, res) => {
@@ -2030,6 +2253,80 @@ module.exports = function(app) {
       try { fs.unlinkSync(req.file.path); } catch(ex) {}
       res.status(500).json({ error: 'Error interpretando PDF: ' + e.message });
     }
+  });
+
+  // ── Métricas completas ────────────────────────────────────────────────────
+  app.get('/api/proyectos/:cc/metricas', (req, res) => {
+    const p = leerProyecto(req.params.cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
+    try { res.json(calcularMetricas(p)); } catch(e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get('/api/proyectos/:cc/evm', (req, res) => {
+    const p = leerProyecto(req.params.cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
+    res.json(calcularMetricas(p).evm);
+  });
+
+  app.get('/api/proyectos/:cc/gantt', (req, res) => {
+    const p = leerProyecto(req.params.cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
+    res.json(calcularMetricas(p).gantt);
+  });
+
+  app.get('/api/proyectos/:cc/edo-resultados', (req, res) => {
+    const p = leerProyecto(req.params.cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
+    res.json(calcularMetricas(p).edo_resultados);
+  });
+
+  app.get('/api/proyectos/:cc/por-nivel', (req, res) => {
+    const p = leerProyecto(req.params.cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
+    const m = calcularMetricas(p);
+    res.json({ por_nivel: m.por_nivel, mensaje: m.por_nivel_msg });
+  });
+
+  app.get('/api/proyectos/:cc/resumen-ejecutivo', (req, res) => {
+    const p = leerProyecto(req.params.cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + req.params.cc });
+    res.json(calcularMetricas(p).resumen);
+  });
+
+  // ── POST cambios ──────────────────────────────────────────────────────────
+  app.post('/api/proyectos/:cc/cambios', (req, res) => {
+    const { cc } = req.params;
+    const p = leerProyecto(cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + cc });
+    const { descripcion, tipo, monto, fecha, estado } = req.body || {};
+    if (!descripcion || !tipo) return res.status(400).json({ error: 'descripcion y tipo son requeridos' });
+    const cambios = p.cambios || [];
+    const nuevo = {
+      id: Date.now().toString(36),
+      descripcion: String(descripcion).trim(),
+      tipo: String(tipo).toLowerCase(),
+      monto: parseFloat(monto) || 0,
+      fecha: fecha || new Date().toISOString().slice(0,10),
+      estado: estado || 'negociacion'
+    };
+    cambios.push(nuevo);
+    p.cambios = cambios;
+    guardarProyecto(cc, p);
+    res.json({ ok: true, cambio: nuevo, total: cambios.length });
+  });
+
+  app.put('/api/proyectos/:cc/cambios/:id', (req, res) => {
+    const { cc, id } = req.params;
+    const p = leerProyecto(cc);
+    if (!p) return res.status(404).json({ error: 'CC no encontrado: ' + cc });
+    const cambios = p.cambios || [];
+    const idx = cambios.findIndex(c => c.id === id);
+    if (idx < 0) return res.status(404).json({ error: 'Cambio no encontrado: ' + id });
+    const actualizado = { ...cambios[idx], ...req.body, id };
+    cambios[idx] = actualizado;
+    p.cambios = cambios;
+    guardarProyecto(cc, p);
+    res.json({ ok: true, cambio: actualizado });
   });
 
   // ── Proxy Gemini (texto) ──────────────────────────────────────────────────
