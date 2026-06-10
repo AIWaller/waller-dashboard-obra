@@ -414,8 +414,15 @@ function extraerCamposContrato(texto) {
     || str(/domicilio\s+de\s+la\s+obra[:\s]+([^.\n]{10,100})/i);
 
   // Razón social cliente — empresa que aparece como CONTRATANTE
+  // Patrón 1: "la sociedad X, S.A.(P.I.) de C.V." — formato típico contratos Waller
+  const sociedadMatch = t.match(/la\s+sociedad\s+([^,\n]+,\s*S\.A\.(?:P\.I\.)?\s*de\s*C\.V\.?)/i)
+    || t.match(/la\s+sociedad\s+([^,\n]+,\s*S\.\s*de\s*R\.L\.[^,\n]*)/i)
+    || t.match(/la\s+sociedad\s+([^,\n]{5,80})/i);
+  // Patrón 2: "X S.A. de C.V. ... en adelante ... CONTRATANTE"
   const clienteMatch = t.match(/([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s,.]{5,80}(?:S\.A\.?|S\.A\.\s*DE\s*C\.V\.?|S\.\s*de\s*R\.L\.|A\.C\.)(?:\s*de\s*C\.V\.?)?)[,;\s]+(?:en\s+adelante|denominad[ao]|a\s+quien)[^,;]*(?:el\s+)?(?:contratante|cliente)/i);
-  const razonSocialCliente = clienteMatch?.[1]?.trim() || str(/(?:contratante|cliente)[:\s]+([A-ZÁÉÍÓÚÑ][^.\n;,]{10,80}(?:S\.A|S\.\s*de\s*R|A\.C))/i);
+  const razonSocialCliente = sociedadMatch?.[1]?.trim()
+    || clienteMatch?.[1]?.trim()
+    || str(/(?:contratante|cliente)[:\s]+([A-ZÁÉÍÓÚÑ][^.\n;,]{10,80}(?:S\.A|S\.\s*de\s*R|A\.C))/i);
 
   const repLegalCliente = str(/(?:representante\s+legal|apoderado\s+legal|representada\s+por)[:\s]+(?:el\s+)?(?:c\.?|sr\.?|lic\.?|ing\.?|arq\.?)?\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?: [A-ZÁÉÍÓÚÑ][a-záéíóúñ]+){1,4})/i);
 
@@ -1878,7 +1885,8 @@ module.exports = function(app) {
         ...(val('fechaInicio')     ? { fechaInicio:      val('fechaInicio') }     : {}),
         ...(val('fechaTerminacion')? { fechaFin:         val('fechaTerminacion') } : {}),
         ...(val('razonSocialCliente') ? { cliente:       val('razonSocialCliente') } : {}),
-        ...(val('repLegalCliente') && !val('razonSocialCliente') ? { cliente: val('repLegalCliente') } : {}),
+        // Solo usar representante como cliente si no hay razón social Y no había cliente previo
+        ...(val('repLegalCliente') && !val('razonSocialCliente') && !existente.cliente ? { cliente: val('repLegalCliente') } : {}),
         ...(val('direccionObra')   ? { ubicacion:        val('direccionObra') }   : {}),
         ...(val('nombreProyecto')  && (!existente.nombre || existente.nombre === 'Obra ' + cc) ? { nombre: val('nombreProyecto') } : {}),
         ...(val('plazoEjecucionDias') ? { plazoEjecucionDias: val('plazoEjecucionDias') } : {}),
