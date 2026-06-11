@@ -1272,12 +1272,16 @@ function initCharts() {
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, padding:8 } } } }
   });
 
-  // Bar egresado vs presupuesto
+  // Bar egresado vs presupuesto — dos barras desde METRICAS.variaciones
   const top6 = partidas.slice(0, 6);
+  const varItems = METRICAS && METRICAS.variaciones && METRICAS.variaciones.length
+    ? METRICAS.variaciones.slice(0, 6)
+    : top6.map(p => ({ nombre: p.nombre || p.clave, presupuestado: 0, ejercido: p.total }));
   new Chart(document.getElementById('bar-categorias'), {
     type:'bar',
-    data:{ labels:top6.map(p=>p.nombre||p.clave), datasets:[
-      { label:'Egresado', data:top6.map(p=>p.total), backgroundColor:'#1B6BB0', borderRadius:4 }
+    data:{ labels:varItems.map(v=>v.nombre), datasets:[
+      { label:'Presupuestado', data:varItems.map(v=>v.presupuestado||0), backgroundColor:'#e2e8f0', borderRadius:4 },
+      { label:'Egresado', data:varItems.map(v=>v.ejercido||0), backgroundColor:'#1B6BB0', borderRadius:4 }
     ]},
     options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'} }, scales:{ y:{ ticks:{ callback:v=>'$'+Math.round(v/1000)+'K' } } } }
   });
@@ -1306,11 +1310,12 @@ function initCharts() {
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>Math.round(v)+'m²'}}} }
   });
 
-  // Bar variaciones (sin presupuesto unitario disponible — solo egresado)
+  // Bar variaciones — presupuestado (gris) vs egresado (azul)
   new Chart(document.getElementById('bar-variaciones'), {
     type:'bar',
-    data:{ labels:top6.map(p=>p.nombre||p.clave), datasets:[
-      { label:'Egresado real', data:top6.map(p=>p.total), backgroundColor:'#1B6BB0', borderRadius:4 }
+    data:{ labels:varItems.map(v=>v.nombre), datasets:[
+      { label:'Presupuestado', data:varItems.map(v=>v.presupuestado||0), backgroundColor:'#e2e8f0', borderRadius:4 },
+      { label:'Egresado', data:varItems.map(v=>v.ejercido||0), backgroundColor:'#1B6BB0', borderRadius:4 }
     ]},
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{ticks:{callback:v=>'$'+Math.round(v/1000)+'K'}}} }
   });
@@ -1514,7 +1519,8 @@ async function initBitacora(){ document.getElementById('bitFecha').value=new Dat
 // ─── Estado de Resultados ──────────────────────────────────────────────────
 function renderEdoResultados(data){
   const edo = METRICAS && METRICAS.edo_resultados ? METRICAS.edo_resultados : null;
-  const fmtV = v => v !== null && v !== undefined ? ('$' + Math.round(v).toLocaleString('es-MX')) : '—';
+  const fmtV = v => v != null && !isNaN(v) ? ('$' + Math.round(v).toLocaleString('es-MX')) : '—';
+  const fmtP = v => v != null && !isNaN(v) ? v.toFixed(1) + '%' : '—';
 
   const contrato  = data.montoContrato || 0;
   const egresado  = data.totalEgresado || 0;
@@ -1526,31 +1532,47 @@ function renderEdoResultados(data){
 
   const ingreso_reconocido = edo ? edo.ingreso_reconocido : (ultimaEst ? (ultimaEst.acumActual||null) : null);
   const costo_total   = edo ? edo.costo_total : egresado;
-  const utilidad_bruta = ingreso_reconocido !== null ? ingreso_reconocido - costo_total : null;
-  const margen_pct    = (utilidad_bruta !== null && ingreso_reconocido > 0) ? (utilidad_bruta/ingreso_reconocido*100) : null;
+  const utilidad_bruta = edo ? edo.utilidad_bruta : (ingreso_reconocido != null ? ingreso_reconocido - costo_total : null);
+  const margen_pct    = edo ? edo.margen_bruto_pct : ((utilidad_bruta != null && ingreso_reconocido > 0) ? (utilidad_bruta/ingreso_reconocido*100) : null);
   const costoCompletar = contrato - costo_total;
-  const pendiente = ingreso_reconocido !== null ? contrato - ingreso_reconocido : null;
-  const utilidadNeta = utilidad_bruta !== null ? utilidad_bruta - retencion : null;
+  const pendiente = ingreso_reconocido != null ? contrato - ingreso_reconocido : null;
+  const utilidadNeta = utilidad_bruta != null ? utilidad_bruta - retencion : null;
   const avancePct = edo ? edo.avance_fisico_pct : null;
+
+  // Llenar tabla Estado de resultados en sección Resumen
+  const tbody = document.getElementById('tbody-edo');
+  if (tbody) {
+    if (!edo) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:1.5rem">Carga estimaciones y cotización para ver el Estado de Resultados</td></tr>`;
+    } else {
+      const clr = v => v == null || isNaN(v) ? '' : v >= 0 ? 'color:#059669;font-weight:700' : 'color:#dc2626;font-weight:700';
+      tbody.innerHTML = [
+        ['Ingresos reconocidos', fmtV(contrato), fmtP(avancePct), `<span style="${clr(edo.ingreso_reconocido)}">${fmtV(edo.ingreso_reconocido)}</span>`, fmtP(contrato > 0 ? edo.ingreso_reconocido/contrato*100 : null)],
+        ['Costo directo', '—', '—', `<span style="color:#dc2626;font-weight:700">${fmtV(edo.costo_directo)}</span>`, '—'],
+        ['Costo indirecto', '—', '—', `<span style="color:#d97706;font-weight:700">${fmtV(edo.costo_indirecto)}</span>`, '—'],
+        ['Utilidad bruta', '—', '—', `<span style="${clr(edo.utilidad_bruta)}">${fmtV(edo.utilidad_bruta)}</span>`, `<span style="${clr(edo.margen_bruto_pct)}">${fmtP(edo.margen_bruto_pct)}</span>`],
+      ].map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join('');
+    }
+  }
 
   set('edo-nombre-obra', data.nombre || ('CC ' + data.cc));
   set('edo-r-contrato', fmtV(contrato));
-  set('edo-r-ingresos', ingreso_reconocido !== null ? fmtV(ingreso_reconocido) : '— Sin estimaciones');
+  set('edo-r-ingresos', ingreso_reconocido != null ? fmtV(ingreso_reconocido) : '— Sin estimaciones');
   set('edo-r-avance-pct', avancePct != null ? `(${avancePct.toFixed(1)}% avance físico)` : '(carga estimaciones)');
-  set('edo-r-pendiente', pendiente !== null ? fmtV(pendiente) : '—');
+  set('edo-r-pendiente', pendiente != null ? fmtV(pendiente) : '—');
   set('edo-r-costos', fmtV(costo_total));
   set('edo-r-costo-completar', fmtV(costoCompletar));
-  set('edo-r-utilidad', utilidad_bruta !== null ? fmtV(utilidad_bruta) : '—');
+  set('edo-r-utilidad', utilidad_bruta != null ? fmtV(utilidad_bruta) : '—');
   set('edo-r-margen-pct', margen_pct != null ? margen_pct.toFixed(1) + '%' : '—');
   set('edo-r-retencion', fmtV(retencion));
-  set('edo-r-utilidad-neta', utilidadNeta !== null ? fmtV(utilidadNeta) : '—');
+  set('edo-r-utilidad-neta', utilidadNeta != null ? fmtV(utilidadNeta) : '—');
   set('edo-r-facturado', fmtV(facturado));
   set('edo-r-por-facturar', fmtV(porFacturar));
 
   const elUtil = document.getElementById('edo-r-utilidad');
-  if (elUtil && utilidad_bruta !== null) elUtil.style.color = utilidad_bruta >= 0 ? '#059669' : '#dc2626';
+  if (elUtil && utilidad_bruta != null) elUtil.style.color = utilidad_bruta >= 0 ? '#059669' : '#dc2626';
   const elMrg = document.getElementById('edo-r-margen-pct');
-  if (elMrg && margen_pct !== null) elMrg.style.color = margen_pct >= 15 ? '#059669' : margen_pct >= 5 ? '#d97706' : '#dc2626';
+  if (elMrg && margen_pct != null) elMrg.style.color = margen_pct >= 15 ? '#059669' : margen_pct >= 5 ? '#d97706' : '#dc2626';
 
   const banner    = document.getElementById('edoBanner');
   const bannerTit = document.getElementById('edoBannerTitulo');
@@ -1558,12 +1580,12 @@ function renderEdoResultados(data){
   const bannerIcon = document.getElementById('edoBannerIcon');
   if (!banner) return;
 
-  if (ingreso_reconocido === null) {
+  if (ingreso_reconocido == null) {
     banner.style.background='#f8fafc'; banner.style.borderLeftColor='#94a3b8';
-    if(bannerTit){bannerTit.textContent='Carga estimaciones para activar el Estado de Resultados';bannerTit.style.color='#64748b';}
-    if(bannerTxt){bannerTxt.textContent='El ingreso reconocido se determina a partir del acumulado de la última estimación (no del avance % × contrato).';bannerTxt.style.color='#94a3b8';}
+    if(bannerTit){bannerTit.textContent='Carga estimaciones y cotización para ver el Estado de Resultados';bannerTit.style.color='#64748b';}
+    if(bannerTxt){bannerTxt.textContent='El ingreso reconocido se determina a partir del acumulado de la última estimación.';bannerTxt.style.color='#94a3b8';}
     if(bannerIcon) bannerIcon.textContent='📂';
-  } else if (utilidad_bruta !== null && utilidad_bruta >= 0) {
+  } else if (utilidad_bruta != null && utilidad_bruta >= 0) {
     banner.style.background='#f0fdf4'; banner.style.borderLeftColor='#059669';
     if(bannerTit){bannerTit.textContent=`Obra rentable — margen bruto ${margen_pct != null ? margen_pct.toFixed(1)+'%' : '—'}`;bannerTit.style.color='#065f46';}
     if(bannerTxt){bannerTxt.textContent=`Ingresos reconocidos ${fmtV(ingreso_reconocido)} vs costos incurridos ${fmtV(costo_total)}. Utilidad bruta: ${fmtV(utilidad_bruta)}.`;bannerTxt.style.color='#047857';}
@@ -1571,7 +1593,7 @@ function renderEdoResultados(data){
   } else {
     banner.style.background='#fef2f2'; banner.style.borderLeftColor='#dc2626';
     if(bannerTit){bannerTit.textContent='Alerta: costos superan ingresos reconocidos';bannerTit.style.color='#991b1b';}
-    if(bannerTxt){bannerTxt.textContent=`Costos incurridos (${fmtV(costo_total)}) superan ingresos (${fmtV(ingreso_reconocido)}). Déficit: ${utilidad_bruta !== null ? fmtV(Math.abs(utilidad_bruta)) : '—'}. Revisar productividad.`;bannerTxt.style.color='#7f1d1d';}
+    if(bannerTxt){bannerTxt.textContent=`Costos incurridos (${fmtV(costo_total)}) superan ingresos (${fmtV(ingreso_reconocido)}). Déficit: ${utilidad_bruta != null ? fmtV(Math.abs(utilidad_bruta)) : '—'}. Revisar productividad.`;bannerTxt.style.color='#7f1d1d';}
     if(bannerIcon) bannerIcon.textContent='🔴';
   }
 }
