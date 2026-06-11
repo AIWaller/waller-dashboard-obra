@@ -195,15 +195,17 @@ function parseCronograma(filePath) {
   let fechasPorCol = {}; // col → "YYYY-MM-DD"
 
   if (semanaRowIdx >= 0) {
-    // Buscar en las siguientes 4 filas la que tenga seriales de fecha en las cols de semana
+    // Escanear todas las columnas dentro del rango de semanas (no solo startCols)
+    const colMin = semanaStartCols[0] || 0;
+    const colMax = (semanaStartCols[semanaStartCols.length - 1] || colMin) + 7;
     for (let r = semanaRowIdx + 1; r <= Math.min(semanaRowIdx + 4, rows.length - 1); r++) {
       const row = rows[r];
-      let fechasEncontradas = 0;
-      for (const col of semanaStartCols) {
-        const iso = serialToISO(toNum(row[col]));
-        if (iso) { fechasPorCol[col] = iso; fechasEncontradas++; }
+      const tmpMap = {};
+      for (let c = colMin; c <= Math.min(colMax, row.length - 1); c++) {
+        const iso = serialToISO(toNum(row[c]));
+        if (iso) tmpMap[c] = iso;
       }
-      if (fechasEncontradas >= 2) { fechasRowIdx = r; break; }
+      if (Object.keys(tmpMap).length >= 2) { fechasPorCol = tmpMap; fechasRowIdx = r; break; }
     }
   }
 
@@ -224,18 +226,20 @@ function parseCronograma(filePath) {
     return { label: semanaLabels[i], startCol, endCol };
   });
 
-  // Buscar filas de niveles (col 0 o 1 tiene un nivel conocido)
+  // Buscar filas de niveles (cols 0-5 tienen un nivel conocido)
   const m2PorNivel   = {};
   const programaSemanalPorNivel = {}; // nivel → { "Semana 1": total, ... }
 
   for (let r = 0; r < rows.length; r++) {
     const row  = rows[r];
-    const colA = String(row[0] || '').trim().toUpperCase();
-    const colB = String(row[1] || '').trim().toUpperCase();
-    const nivel = NIVELES.includes(colA) ? colA : NIVELES.includes(colB) ? colB : null;
+    let nivel = null;
+    for (let c = 0; c <= Math.min(5, row.length - 1); c++) {
+      const v = String(row[c] || '').trim().toUpperCase();
+      if (NIVELES.includes(v)) { nivel = v; break; }
+    }
     if (!nivel) continue;
 
-    programaSemanalPorNivel[nivel] = {};
+    if (!programaSemanalPorNivel[nivel]) programaSemanalPorNivel[nivel] = {};
     let totalNivel = 0;
 
     semanasRanges.forEach(({ label, startCol, endCol }) => {
@@ -244,12 +248,12 @@ function parseCronograma(filePath) {
         sumaSemana += toNum(row[c]);
       }
       if (sumaSemana > 0) {
-        programaSemanalPorNivel[nivel][label] = Math.round(sumaSemana * 100) / 100;
+        programaSemanalPorNivel[nivel][label] = Math.round(((programaSemanalPorNivel[nivel][label] || 0) + sumaSemana) * 100) / 100;
         totalNivel += sumaSemana;
       }
     });
 
-    if (totalNivel > 0) m2PorNivel[nivel] = Math.round(totalNivel * 100) / 100;
+    if (totalNivel > 0) m2PorNivel[nivel] = Math.round(((m2PorNivel[nivel] || 0) + totalNivel) * 100) / 100;
   }
 
   // ── 5. Consolidar programaSemanal como totales por semana (suma de todos los niveles) ──
@@ -268,7 +272,15 @@ function parseCronograma(filePath) {
   if (Object.keys(fechasPorCol).length > 0) {
     const colsSorted = Object.keys(fechasPorCol).map(Number).sort((a, b) => a - b);
     fechaInicio = fechasPorCol[colsSorted[0]];
-    fechaFin    = fechasPorCol[colsSorted[colsSorted.length - 1]];
+    // fechaFin = último día detectado + 6 días (fin de semana)
+    const lastSerial = toNum(rows[fechasRowIdx]?.[colsSorted[colsSorted.length - 1]]) || 0;
+    if (lastSerial > 40000) {
+      const lastDate = new Date(Math.round((lastSerial - 25569) * 86400 * 1000));
+      lastDate.setUTCDate(lastDate.getUTCDate() + 6);
+      fechaFin = lastDate.toISOString().slice(0, 10);
+    } else {
+      fechaFin = fechasPorCol[colsSorted[colsSorted.length - 1]];
+    }
   }
 
   // Fallback: buscar serial en fila justo debajo de semanaRowIdx
@@ -1157,7 +1169,7 @@ function calcularMetricas(proyecto) {
   const AC = p.totalEgresado || 0;
 
   const fechaInicio = p.fechaInicio || cron.fechaInicio || null;
-  const fechaFin = p.fechaFin || null;
+  const fechaFin = p.fechaFin || cron.fechaFin || null;
   let PV = null;
   if (fechaInicio && fechaFin) {
     const dInicio = toDate(fechaInicio);
@@ -1206,7 +1218,7 @@ function calcularMetricas(proyecto) {
       const ps = cron.programaSemanal || {};
       for (let s = 1; s <= cron.totalSemanas; s++) {
         const fechaSem = new Date(dInicio.getTime() + (s-1)*7*86400000);
-        const pvM2 = Object.values(ps).reduce((sum, nv) => sum + (nv['S'+s]||0), 0);
+        const pvM2 = ps['Semana ' + s] || 0;
         ganttSemanas.push({ semana: s, fecha: fechaSem.toISOString().slice(0,10), pvM2 });
       }
     }
