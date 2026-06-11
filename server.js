@@ -104,6 +104,7 @@ const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 app.use(express.static('public'));
+require('./obras-routes')(app);
 const JWT_SECRET = 'WallerSecret2026XK9mP';
 const USERS = {'Vendedor01':{pass:'Ventas01',nombre:'Gisela Lemus',iniciales:'GL',rol:'vendedor'},'Administrador01':{pass:'AdminWaller',nombre:'Gustavo Rodriguez',iniciales:'GR',rol:'admin'},'WACOM01':{pass:'Asdf01',nombre:'Gisela Lemus',iniciales:'GL',rol:'vendedor'},'WACOM02':{pass:'Qwer02',nombre:'Juan Francisco Saavedra',iniciales:'JFS',rol:'vendedor'},'WAAI01':{pass:'Zxcv01',nombre:'Control AI',iniciales:'CAI',rol:'admin'},'Proyectos01':{pass:'01',nombre:'Proyectos',iniciales:'PR',rol:'vendedor'}};
 app.post('/api/auth/login',(req,res)=>{const{usuario,password}=req.body;const user=USERS[usuario];if(!user||user.pass!==password)return res.status(401).json({error:'Usuario o contrasena incorrectos'});const token=jwt.sign({usuario,nombre:user.nombre,iniciales:user.iniciales,rol:user.rol},JWT_SECRET,{expiresIn:'8h'});res.cookie('waller_token',token,{httpOnly:true,secure:true,sameSite:'strict',maxAge:8*60*60*1000});res.json({ok:true,nombre:user.nombre,rol:user.rol,iniciales:user.iniciales});});
