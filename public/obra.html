@@ -9,13 +9,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
-#login-overlay{display:none;position:fixed;inset:0;background:#1B6BB0;z-index:1000;align-items:center;justify-content:center}
-#login-box{background:#fff;border-radius:12px;padding:2.5rem;width:360px;text-align:center}
-#login-box .logo{font-size:22px;font-weight:700;color:#1B6BB0;margin-bottom:0.25rem}
-#login-box .sub{font-size:13px;color:#64748b;margin-bottom:2rem}
-#login-box input{width:100%;padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none}
-#login-box button{width:100%;padding:11px;background:#1B6BB0;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-#login-box .err{color:#dc2626;font-size:13px;margin-top:8px}
 .navbar{background:#1B6BB0;color:#fff;padding:0 1.5rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .navbar-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
 .navbar-brand .badge{background:rgba(255,255,255,0.2);padding:3px 10px;border-radius:20px;font-size:12px}
@@ -172,17 +165,6 @@ input[type=file].arch-input{display:none}
 </style>
 </head>
 <body>
-
-<div id="login-overlay">
-  <div id="login-box">
-    <div class="logo">WALLER</div>
-    <div class="sub">Control de Obra</div>
-    <input type="text" id="l-user" placeholder="Usuario">
-    <input type="password" id="l-pass" placeholder="Contraseña">
-    <button onclick="doLogin()">Entrar</button>
-    <div class="err" id="l-err"></div>
-  </div>
-</div>
 
 <nav class="navbar">
   <div class="navbar-brand">
@@ -551,8 +533,8 @@ input[type=file].arch-input{display:none}
 
 <script>
 // ─── Helpers ───────────────────────────────────────────────────────────────
-const fmt  = n => '$' + Math.round(n).toLocaleString('es-MX');
-const fmtK = n => { const a=Math.abs(n); return (n<0?'-':'')+( a>=1e6?'$'+(a/1e6).toFixed(2)+'M' : a>=1e3?'$'+Math.round(a/1e3)+'K' : fmt(n) ); };
+const fmt  = n => '$' + Math.round(n || 0).toLocaleString('es-MX');
+const fmtK = n => { if (n == null) return '—'; const a=Math.abs(n); return (n<0?'-':'')+( a>=1e6?'$'+(a/1e6).toFixed(2)+'M' : a>=1e3?'$'+Math.round(a/1e3)+'K' : fmt(n) ); };
 const set  = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
 const pill = (pct, max=100) => {
   if(pct===null||pct===undefined) return '<span class="pill morado">Sin datos</span>';
@@ -784,8 +766,8 @@ function renderEVM(d) {
   set('evm-ac-hint', 'Gasto real · ' + (pctEgr*100).toFixed(1) + '% del contrato · ' + (d.ultimaActualizacion || ''));
 
   const cpiEl = document.getElementById('evm-cpi');
-  if (cpiEl) { cpiEl.textContent = cpi !== null ? cpi.toFixed(2) : '—'; cpiEl.className = 'idx-val ' + (cpi === null ? '' : cpi >= 1 ? '' : cpi >= 0.75 ? 'warn' : 'danger'); }
-  set('evm-cpi-desc', cpi !== null ? `Por cada peso gastado se generan $${cpi.toFixed(2)} de valor instalado. ${cpi >= 1 ? 'Eficiencia óptima.' : cpi >= 0.85 ? 'Leve sobrecosto.' : 'Sobrecosto significativo.'}` : 'Sin datos suficientes.');
+  if (cpiEl) { cpiEl.textContent = cpi != null ? cpi.toFixed(2) : '—'; cpiEl.className = 'idx-val ' + (cpi == null ? '' : cpi >= 1 ? '' : cpi >= 0.75 ? 'warn' : 'danger'); }
+  set('evm-cpi-desc', cpi != null ? `Por cada peso gastado se generan $${cpi.toFixed(2)} de valor instalado. ${cpi >= 1 ? 'Eficiencia óptima.' : cpi >= 0.85 ? 'Leve sobrecosto.' : 'Sobrecosto significativo.'}` : 'Sin datos suficientes.');
   const eacEl = document.getElementById('evm-eac');
   if (eacEl) { eacEl.textContent = eacProb ? fmtK(eacProb) : '—'; eacEl.className = 'idx-val ' + (eacProb ? (eacProb <= bac ? '' : 'danger') : ''); }
   set('evm-eac-desc', eacProb ? `Al ritmo actual. ${vac !== null ? (vac >= 0 ? 'Ahorro estimado: ' + fmtK(vac) : 'Excedente estimado: ' + fmtK(Math.abs(vac))) : ''}.` : 'Sin CPI disponible.');
@@ -814,7 +796,7 @@ function renderEVM(d) {
     const atenc = cpi !== null && cpi < 1;
     diagEl.className = 'diag ' + (malo ? 'rojo' : atenc ? 'amarillo' : 'verde');
     const icono = malo ? '🔴' : atenc ? '⚠' : '✅';
-    set('evm-diag-title', `${icono} EVM activo — CPI ${cpi !== null ? cpi.toFixed(2) : '—'} ${cpi === null ? '(sin datos)' : cpi >= 1 ? '· eficiencia óptima' : cpi >= 0.85 ? '· leve sobrecosto' : '· sobrecosto crítico'}`);
+    set('evm-diag-title', `${icono} EVM activo — CPI ${cpi != null ? cpi.toFixed(2) : '—'} ${cpi == null ? '(sin datos)' : cpi >= 1 ? '· eficiencia óptima' : cpi >= 0.85 ? '· leve sobrecosto' : '· sobrecosto crítico'}`);
     set('evm-diag-body', `EV ${fmtK(ev)} · AC ${fmtK(ac)} · BAC ${fmtK(bac)}.${pv !== null ? ' PV ' + fmtK(pv) + '.' : ' PV: sin fechas de contrato.'}`);
     document.getElementById('evm-diag-lista').innerHTML = malo ? '<li>Revisar productividad y ritmo de instalación.</li><li>Evaluar segunda cuadrilla para recuperar programa.</li>' : '';
   }
@@ -1105,7 +1087,7 @@ function renderVariaciones(d) {
       <td class="num">${v.presupuestado > 0 ? fmt(v.presupuestado) : '—'}</td>
       <td class="num" style="font-weight:500">${fmt(v.ejercido)}</td>
       <td class="num" style="color:${v.variacion > 0 ? '#dc2626' : v.variacion < 0 ? '#059669' : '#94a3b8'}">${v.variacion !== null ? (v.variacion > 0 ? '+' : '') + fmt(v.variacion) : '—'}</td>
-      <td class="num">${v.pct !== null ? v.pct.toFixed(1) + '%' : '—'}</td>
+      <td class="num">${v.pct != null ? v.pct.toFixed(1) + '%' : '—'}</td>
       <td><span class="pill ${cls}">${estadoLabel[v.estado] || v.estado}</span></td>
     </tr>`;
   }).join('');
@@ -1204,7 +1186,7 @@ function renderNiveles() {
     <td style="font-weight:600">${n.nivel}</td>
     <td class="num">${Math.round(n.m2_programado)} m²</td>
     <td class="num">${Math.round(n.m2_instalado)} m²</td>
-    <td class="num">${n.pct_avance.toFixed(1)}%</td>
+    <td class="num">${(n.pct_avance ?? 0).toFixed(1)}%</td>
     <td class="num">${Math.round(n.saldo)} m²</td>
     <td><span class="pill ${estadoCls[n.estado] || 'morado'}">${estadoLabel[n.estado] || n.estado}</span></td>
   </tr>`).join('');
@@ -1528,8 +1510,6 @@ function verFotoCompleta(id){ const e=(_bitacoraCache||[]).find(x=>x.id===id); i
 async function initBitacora(){ document.getElementById('bitFecha').value=new Date().toISOString().slice(0,10); renderBitacora(await cargarBitacora()); }
 
 // ─── Login ─────────────────────────────────────────────────────────────────
-const USUARIOS_OBRA={};
-function doLogin(){const u=document.getElementById('l-user').value,p=document.getElementById('l-pass').value;if(USUARIOS_OBRA[u]===p){document.getElementById('login-overlay').style.display='none';}else{document.getElementById('l-err').textContent='Usuario o contraseña incorrectos';}}
 
 // ─── Estado de Resultados ──────────────────────────────────────────────────
 function renderEdoResultados(data){
@@ -1556,12 +1536,12 @@ function renderEdoResultados(data){
   set('edo-nombre-obra', data.nombre || ('CC ' + data.cc));
   set('edo-r-contrato', fmtV(contrato));
   set('edo-r-ingresos', ingreso_reconocido !== null ? fmtV(ingreso_reconocido) : '— Sin estimaciones');
-  set('edo-r-avance-pct', avancePct !== null ? `(${avancePct.toFixed(1)}% avance físico)` : '(carga estimaciones)');
+  set('edo-r-avance-pct', avancePct != null ? `(${avancePct.toFixed(1)}% avance físico)` : '(carga estimaciones)');
   set('edo-r-pendiente', pendiente !== null ? fmtV(pendiente) : '—');
   set('edo-r-costos', fmtV(costo_total));
   set('edo-r-costo-completar', fmtV(costoCompletar));
   set('edo-r-utilidad', utilidad_bruta !== null ? fmtV(utilidad_bruta) : '—');
-  set('edo-r-margen-pct', margen_pct !== null ? margen_pct.toFixed(1) + '%' : '—');
+  set('edo-r-margen-pct', margen_pct != null ? margen_pct.toFixed(1) + '%' : '—');
   set('edo-r-retencion', fmtV(retencion));
   set('edo-r-utilidad-neta', utilidadNeta !== null ? fmtV(utilidadNeta) : '—');
   set('edo-r-facturado', fmtV(facturado));
